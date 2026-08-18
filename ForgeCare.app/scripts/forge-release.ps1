@@ -133,28 +133,30 @@ else {
     Write-Host "[5/6] Upgrade-safe per-user installer" -ForegroundColor Cyan
 
     $InnoCandidates = @(
+    @(
         "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
-        "${env:ProgramFiles}\Inno Setup 6\ISCC.exe",
-        "${env:LOCALAPPDATA}\Programs\Inno Setup 6\ISCC.exe"
+        "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+        "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe"
     ) | Where-Object { $_ -and (Test-Path $_) }
+)
 
     if ($InnoCandidates.Count -eq 0) {
-        Write-Host ""
-        Write-Host "Inno Setup 6 was not found." -ForegroundColor Yellow
-        Write-Host "Portable beta release is READY." -ForegroundColor Green
-        Write-Host "Install Inno Setup 6 and rerun this script to create the installer." -ForegroundColor Yellow
-    }
-    else {
-        $ISCC = $InnoCandidates[0]
-        Write-Host "Inno Setup: $ISCC" -ForegroundColor DarkGray
-        & $ISCC $InstallerScript
+    Write-Host ""
+    Write-Host "Inno Setup 6 was not found." -ForegroundColor Yellow
+    Write-Host "Portable beta release is READY." -ForegroundColor Green
+    Write-Host "Install Inno Setup 6 and rerun this script to create the installer." -ForegroundColor Yellow
+}
+else {
+    $ISCC = $InnoCandidates[0]
+    Write-Host "Inno Setup: $ISCC" -ForegroundColor DarkGray
+    & $ISCC $InstallerScript
 
-        if ($LASTEXITCODE -ne 0) {
-            throw "Inno Setup returned exit code $LASTEXITCODE."
-        }
-
-        $InstallerBuilt = Test-Path $InstallerOutput
+    if ($LASTEXITCODE -ne 0) {
+        throw "Inno Setup returned exit code $LASTEXITCODE."
     }
+
+    $InstallerBuilt = Test-Path $InstallerOutput
+}
 }
 
 Write-Host "[6/6] Release manifest + SHA-256 fingerprints" -ForegroundColor Cyan
