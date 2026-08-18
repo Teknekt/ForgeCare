@@ -1,0 +1,18 @@
+ForgeCare Sprint 10A QuickFix
+
+Copy the CONTENTS of this folder over the ForgeCare.app project root
+and allow Windows/Visual Studio to replace matching files.
+
+Important:
+- Converters/SeverityBrushConverter.cs must exist in the project.
+- Models/SafetyJournalEntry.cs and Models/SafetySnapshot.cs must exist.
+- Services/SafetyJournalService.cs must exist.
+
+Then in Visual Studio:
+1. Build > Clean Solution
+2. Build > Rebuild Solution
+3. If Error List still shows stale XAML errors, close Visual Studio,
+   delete bin and obj, reopen the solution, and Rebuild.
+
+The CA1416 Windows-platform entries are analyzer warnings, not build errors,
+for this net10.0-windows WPF application.

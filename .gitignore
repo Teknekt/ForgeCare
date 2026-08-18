@@ -1,0 +1,33 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Build output
+bin/
+obj/
+
+# Release/build artifacts
+artifacts/
+
+# Test results / coverage
+TestResults/
+coverage/
+
+# Logs / temp
+*.log
+*.tmp
+*.temp
+
+# OS junk
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# NuGet
+packages/
+*.nupkg
+
+# Local-only settings/secrets
+*.local.json
+settings.local.json

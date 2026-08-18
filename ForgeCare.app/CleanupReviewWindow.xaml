@@ -1,0 +1,348 @@
+﻿<Window x:Class="ForgeCare.App.CleanupReviewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ForgeCare Cleanup Review"
+        Width="900"
+        Height="790"
+        MinWidth="800"
+        MinHeight="700"
+        WindowStartupLocation="CenterOwner"
+        Background="#0C0D0F">
+
+    <Window.Resources>
+
+        <Style x:Key="ReviewCard"
+               TargetType="Border">
+            <Setter Property="Background"
+                    Value="#141619"/>
+            <Setter Property="CornerRadius"
+                    Value="14"/>
+        </Style>
+
+    </Window.Resources>
+
+    <Grid Margin="28">
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- HEADER -->
+
+        <Grid>
+
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel>
+
+                <TextBlock Text="MINDFORGE STUDIO"
+                           Foreground="#C7A65B"
+                           FontSize="11"
+                           FontWeight="SemiBold"/>
+
+                <TextBlock Text="CLEANUP FORGE"
+                           Foreground="White"
+                           FontSize="28"
+                           FontWeight="Bold"
+                           Margin="0,3,0,0"/>
+
+                <TextBlock x:Name="ReviewSubtitleText"
+                           Text="Simulation required before live cleanup."
+                           Foreground="#7C848E"
+                           FontSize="13"
+                           Margin="0,5,0,0"/>
+
+            </StackPanel>
+
+            <Border x:Name="ModeBadge"
+                    Grid.Column="1"
+                    Background="#211D12"
+                    BorderBrush="#5E512D"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="12,7"
+                    VerticalAlignment="Center">
+
+                <TextBlock x:Name="ModeBadgeText"
+                           Text="SAFE MODE"
+                           Foreground="#C7A65B"
+                           FontSize="11"
+                           FontWeight="Bold"/>
+
+            </Border>
+
+        </Grid>
+
+        <!-- SUMMARY -->
+
+        <Grid Grid.Row="2">
+
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0"
+                    Style="{StaticResource ReviewCard}"
+                    Padding="16">
+
+                <StackPanel>
+
+                    <TextBlock Text="SOURCES"
+                               Foreground="#747C85"
+                               FontSize="10"/>
+
+                    <TextBlock x:Name="SourceCountText"
+                               Text="--"
+                               Foreground="White"
+                               FontSize="25"/>
+
+                </StackPanel>
+
+            </Border>
+
+            <Border Grid.Column="2"
+                    Style="{StaticResource ReviewCard}"
+                    Padding="16">
+
+                <StackPanel>
+
+                    <TextBlock Text="SELECTED"
+                               Foreground="#747C85"
+                               FontSize="10"/>
+
+                    <TextBlock x:Name="SelectedSizeText"
+                               Text="--"
+                               Foreground="#C7A65B"
+                               FontSize="25"/>
+
+                </StackPanel>
+
+            </Border>
+
+            <Border Grid.Column="4"
+                    Style="{StaticResource ReviewCard}"
+                    Padding="16">
+
+                <StackPanel>
+
+                    <TextBlock x:Name="ResultSizeLabel"
+                               Text="CLEANABLE"
+                               Foreground="#747C85"
+                               FontSize="10"/>
+
+                    <TextBlock x:Name="CleanableSizeText"
+                               Text="--"
+                               Foreground="White"
+                               FontSize="25"/>
+
+                </StackPanel>
+
+            </Border>
+
+            <Border Grid.Column="6"
+                    Style="{StaticResource ReviewCard}"
+                    Padding="16">
+
+                <StackPanel>
+
+                    <TextBlock x:Name="ResultFilesLabel"
+                               Text="SKIPPED"
+                               Foreground="#747C85"
+                               FontSize="10"/>
+
+                    <TextBlock x:Name="SkippedFilesText"
+                               Text="--"
+                               Foreground="White"
+                               FontSize="25"/>
+
+                </StackPanel>
+
+            </Border>
+
+        </Grid>
+
+        <!-- LOG -->
+
+        <Grid Grid.Row="4">
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="12"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock x:Name="SectionTitleText"
+                       Text="SELECTED SOURCES"
+                       Foreground="White"
+                       FontSize="16"
+                       FontWeight="SemiBold"/>
+
+            <ListView x:Name="SelectedSourcesList"
+                      Grid.Row="2"
+                      Background="Transparent"
+                      BorderThickness="0"
+                      Foreground="White">
+
+                <ListView.ItemTemplate>
+
+                    <DataTemplate>
+
+                        <Border Background="#141619"
+                                BorderBrush="#292D32"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Margin="0,0,0,8"
+                                Padding="13">
+
+                            <Grid>
+
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel>
+
+                                    <TextBlock Text="{Binding Name}"
+                                               Foreground="White"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"/>
+
+                                    <TextBlock Text="{Binding Path}"
+                                               Foreground="#747C85"
+                                               FontSize="11"
+                                               Margin="0,3,0,0"
+                                               TextTrimming="CharacterEllipsis"/>
+
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1"
+                                            Margin="18,0,0,0">
+
+                                    <TextBlock Text="{Binding DisplaySize}"
+                                               Foreground="#C7A65B"
+                                               FontSize="13"
+                                               HorizontalAlignment="Right"/>
+
+                                    <TextBlock Text="{Binding FileCount, StringFormat={}{0:N0} files}"
+                                               Foreground="#747C85"
+                                               FontSize="11"
+                                               HorizontalAlignment="Right"/>
+
+                                </StackPanel>
+
+                            </Grid>
+
+                        </Border>
+
+                    </DataTemplate>
+
+                </ListView.ItemTemplate>
+
+            </ListView>
+
+        </Grid>
+
+        <!-- ACTION AREA -->
+
+        <Border Grid.Row="6"
+                Background="#111316"
+                BorderBrush="#3B3422"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="16">
+
+            <Grid>
+
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="14"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel>
+
+                    <TextBlock x:Name="SafetyTitleText"
+                               Text="SIMULATION REQUIRED"
+                               Foreground="#C7A65B"
+                               FontSize="11"
+                               FontWeight="Bold"/>
+
+                    <TextBlock x:Name="SafetyStatusText"
+                               Text="Run a safety simulation before ForgeCare can enable live cleanup."
+                               Foreground="#8C949D"
+                               FontSize="12"
+                               TextWrapping="Wrap"
+                               Margin="0,5,0,0"/>
+
+                </StackPanel>
+
+                <Grid Grid.Row="2">
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+
+                    <Button Content="CLOSE"
+                            Height="48"
+                            Background="#1A1D21"
+                            Foreground="#A0A7AF"
+                            BorderBrush="#34383D"
+                            BorderThickness="1"
+                            FontWeight="SemiBold"
+                            Cursor="Hand"
+                            Click="CancelButton_Click"/>
+
+                    <Button x:Name="SimulateButton"
+                            Grid.Column="2"
+                            Content="RUN SAFETY SIMULATION"
+                            Height="48"
+                            Background="#25292E"
+                            Foreground="White"
+                            BorderBrush="#3A3F45"
+                            BorderThickness="1"
+                            FontWeight="SemiBold"
+                            Cursor="Hand"
+                            Click="SimulateButton_Click"/>
+
+                    <Button x:Name="ExecuteButton"
+                            Grid.Column="4"
+                            Content="LIVE CLEANUP LOCKED"
+                            Height="48"
+                            Background="#25292E"
+                            Foreground="#666C73"
+                            BorderBrush="#34383D"
+                            BorderThickness="1"
+                            FontWeight="Bold"
+                            Cursor="Arrow"
+                            IsEnabled="False"
+                            Click="ExecuteButton_Click"/>
+
+                </Grid>
+
+            </Grid>
+
+        </Border>
+
+    </Grid>
+
+</Window>

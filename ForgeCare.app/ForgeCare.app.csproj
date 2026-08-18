@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+
+    <!-- Sprint 10C: release identity -->
+    <AssemblyName>ForgeCare</AssemblyName>
+    <RootNamespace>ForgeCare.App</RootNamespace>
+    <Product>ForgeCare</Product>
+    <Title>ForgeCare</Title>
+    <Description>ForgeCare Technician Edition — local-first Windows diagnostics, cleanup, optimization, safety and reporting by Mindforge Studio.</Description>
+    <Company>Mindforge Studio</Company>
+    <Authors>Mindforge Studio</Authors>
+    <Copyright>Copyright © Mindforge Studio 2026</Copyright>
+
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>1.0.0</InformationalVersion>
+
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\Icons\ForgeCare.ico</ApplicationIcon>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <Platforms>AnyCPU;x64</Platforms>
+
+    <!-- Sprint 11B: product/release identity -->
+    <NeutralLanguage>en</NeutralLanguage>
+    <PackageTags>ForgeCare;Mindforge Studio;Windows;Diagnostics;Technician</PackageTags>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Assets\Icons\" />
+    <Folder Include="Assets\Images\" />
+    <Folder Include="Views\" />
+    <Folder Include="ViewModels\" />
+    <Folder Include="Styles\" />
+  </ItemGroup>
+
+  <!-- Sprint 10B quickfix:
+       old local copies of StartupPreviewWindow can survive patch imports.
+       ForgeCare now uses StartupReviewWindow instead. -->
+  <ItemGroup>
+    <Page Remove="StartupPreviewWindow.xaml" />
+    <Compile Remove="StartupPreviewWindow.xaml.cs" />
+    <None Remove="StartupPreviewWindow.xaml" />
+  </ItemGroup>
+
+</Project>

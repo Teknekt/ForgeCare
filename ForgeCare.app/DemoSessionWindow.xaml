@@ -1,0 +1,117 @@
+<Window x:Class="ForgeCare.App.DemoSessionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ForgeCare — Demo Session"
+        Width="1080" Height="720"
+        MinWidth="900" MinHeight="600"
+        WindowStartupLocation="CenterOwner"
+        Background="#0C0E10" Foreground="White">
+    <Window.Resources>
+        <Style x:Key="DemoCard" TargetType="Border">
+            <Setter Property="Background" Value="#14171A"/>
+            <Setter Property="BorderBrush" Value="#2A2F34"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="12"/>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="26">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/><RowDefinition Height="18"/>
+            <RowDefinition Height="Auto"/><RowDefinition Height="18"/>
+            <RowDefinition Height="*"/><RowDefinition Height="18"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="MINDFORGE STUDIO" Foreground="#C7A65B" FontSize="11" FontWeight="SemiBold"/>
+                <TextBlock Text="FORGECARE DEMO SESSION" FontSize="30" FontWeight="Bold" Margin="0,4,0,0"/>
+                <TextBlock Text="Isolated demonstration data — no system scan or Windows changes are performed."
+                           Foreground="#8C949D" FontSize="12" Margin="0,6,0,0"/>
+            </StackPanel>
+            <Border Grid.Column="1" Background="#3A2717" BorderBrush="#C78A43" BorderThickness="1"
+                    CornerRadius="8" Padding="14,8" VerticalAlignment="Top">
+                <TextBlock Text="DEMO DATA" Foreground="#F0B25E" FontWeight="Bold"/>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/><ColumnDefinition Width="14"/><ColumnDefinition/>
+                <ColumnDefinition Width="14"/><ColumnDefinition/><ColumnDefinition Width="14"/><ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Style="{StaticResource DemoCard}" Padding="18">
+                <StackPanel><TextBlock Text="HEALTH" Foreground="#777F88" FontSize="9"/>
+                    <TextBlock Text="71 → 91" Foreground="#C7A65B" FontSize="28" Margin="0,7,0,0"/>
+                    <TextBlock Text="+20 verified" Foreground="#6EBE8C" FontSize="10"/></StackPanel>
+            </Border>
+            <Border Grid.Column="2" Style="{StaticResource DemoCard}" Padding="18">
+                <StackPanel><TextBlock Text="STORAGE" Foreground="#777F88" FontSize="9"/>
+                    <TextBlock Text="+18.4 GB" Foreground="#6EBE8C" FontSize="28" Margin="0,7,0,0"/>
+                    <TextBlock Text="recovered" Foreground="#8C949D" FontSize="10"/></StackPanel>
+            </Border>
+            <Border Grid.Column="4" Style="{StaticResource DemoCard}" Padding="18">
+                <StackPanel><TextBlock Text="STARTUP" Foreground="#777F88" FontSize="9"/>
+                    <TextBlock Text="22 → 14" FontSize="28" Margin="0,7,0,0"/>
+                    <TextBlock Text="8 reviewed changes" Foreground="#8C949D" FontSize="10"/></StackPanel>
+            </Border>
+            <Border Grid.Column="6" Style="{StaticResource DemoCard}" Padding="18">
+                <StackPanel><TextBlock Text="ACTIONS" Foreground="#777F88" FontSize="9"/>
+                    <TextBlock Text="6" Foreground="#C7A65B" FontSize="28" Margin="0,7,0,0"/>
+                    <TextBlock Text="all verified" Foreground="#6EBE8C" FontSize="10"/></StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="4">
+            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="18"/><ColumnDefinition/></Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Style="{StaticResource DemoCard}" Padding="22">
+                <StackPanel>
+                    <TextBlock Text="GUIDED FORGE" FontSize="18" FontWeight="SemiBold"/>
+                    <TextBlock Text="Example service path" Foreground="#777F88" FontSize="10" Margin="0,4,0,18"/>
+                    <TextBlock Text="✓  Capture system baseline" Foreground="#6EBE8C" Margin="0,0,0,12"/>
+                    <TextBlock Text="✓  Run core diagnostics" Foreground="#6EBE8C" Margin="0,0,0,12"/>
+                    <TextBlock Text="✓  Review optimization opportunities" Foreground="#6EBE8C" Margin="0,0,0,12"/>
+                    <TextBlock Text="✓  Execute approved safe actions" Foreground="#6EBE8C" Margin="0,0,0,12"/>
+                    <TextBlock Text="✓  Verify system state" Foreground="#6EBE8C" Margin="0,0,0,12"/>
+                    <TextBlock Text="●  Deliver service report" Foreground="#C7A65B" FontWeight="SemiBold"/>
+                    <Border Background="#101317" BorderBrush="#30353B" BorderThickness="1" CornerRadius="8"
+                            Padding="14" Margin="0,22,0,0">
+                        <StackPanel><TextBlock Text="NEXT BEST ACTION" Foreground="#777F88" FontSize="9"/>
+                            <TextBlock Text="Export verified customer report" FontSize="15" FontWeight="SemiBold" Margin="0,5,0,0"/>
+                            <TextBlock Text="All required demo steps are complete." Foreground="#8C949D" FontSize="10" Margin="0,4,0,0"/></StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="2" Style="{StaticResource DemoCard}" Padding="22">
+                <StackPanel>
+                    <TextBlock Text="SERVICE RESULT FEED" FontSize="18" FontWeight="SemiBold"/>
+                    <TextBlock Text="Example technician-facing feedback" Foreground="#777F88" FontSize="10" Margin="0,4,0,16"/>
+                    <Border Background="#101317" CornerRadius="8" Padding="14" Margin="0,0,0,9">
+                        <StackPanel><TextBlock Text="✓ Temporary-file cleanup complete" Foreground="#6EBE8C" FontWeight="SemiBold"/>
+                            <TextBlock Text="7.8 GB safely reclaimed." Foreground="#8C949D" FontSize="10" Margin="0,4,0,0"/></StackPanel>
+                    </Border>
+                    <Border Background="#101317" CornerRadius="8" Padding="14" Margin="0,0,0,9">
+                        <StackPanel><TextBlock Text="✓ Startup review complete" Foreground="#6EBE8C" FontWeight="SemiBold"/>
+                            <TextBlock Text="8 approved entries changed; recovery metadata captured." Foreground="#8C949D" FontSize="10" Margin="0,4,0,0"/></StackPanel>
+                    </Border>
+                    <Border Background="#101317" CornerRadius="8" Padding="14" Margin="0,0,0,9">
+                        <StackPanel><TextBlock Text="✓ Large-file cleanup complete" Foreground="#6EBE8C" FontWeight="SemiBold"/>
+                            <TextBlock Text="10.6 GB moved through the reviewed storage workflow." Foreground="#8C949D" FontSize="10" Margin="0,4,0,0"/></StackPanel>
+                    </Border>
+                    <Border Background="#101317" CornerRadius="8" Padding="14">
+                        <StackPanel><TextBlock Text="✓ Verification scan complete" Foreground="#6EBE8C" FontWeight="SemiBold"/>
+                            <TextBlock Text="Health improved from 71 to 91. No critical findings remain." Foreground="#8C949D" FontSize="10" Margin="0,4,0,0"/></StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="6">
+            <TextBlock Text="DEMO MODE NEVER EXECUTES SYSTEM-CHANGING ACTIONS" Foreground="#8C949D" FontSize="9" VerticalAlignment="Center"/>
+            <Button Content="CLOSE DEMO" Width="140" Height="40" HorizontalAlignment="Right"
+                    Background="#C7A65B" Foreground="#101010" BorderThickness="0" FontWeight="Bold"
+                    Click="CloseDemoButton_Click"/>
+        </Grid>
+    </Grid>
+</Window>

@@ -1,0 +1,49 @@
+<Application x:Class="ForgeCare.app.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:ForgeCare.app"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+
+        <!-- ===================================================== -->
+        <!-- FORGECARE PRODUCT IDENTITY                            -->
+        <!-- Sprint 11B centralizes the most important product     -->
+        <!-- colors and primary action treatment at app scope.     -->
+        <!-- ===================================================== -->
+
+        <SolidColorBrush x:Key="ForgeBackgroundBrush"
+                         Color="#0C0D0F"/>
+
+        <SolidColorBrush x:Key="ForgeSurfaceBrush"
+                         Color="#141619"/>
+
+        <SolidColorBrush x:Key="ForgeGoldBrush"
+                         Color="#C7A65B"/>
+
+        <SolidColorBrush x:Key="ForgeTextBrush"
+                         Color="#F5F5F5"/>
+
+        <SolidColorBrush x:Key="ForgeMutedBrush"
+                         Color="#7C848E"/>
+
+        <SolidColorBrush x:Key="ForgeSuccessBrush"
+                         Color="#6EBE8C"/>
+
+        <Style x:Key="PrimaryActionButtonStyle"
+               TargetType="Button">
+            <Setter Property="Background"
+                    Value="{StaticResource ForgeGoldBrush}"/>
+            <Setter Property="Foreground"
+                    Value="#101010"/>
+            <Setter Property="BorderThickness"
+                    Value="0"/>
+            <Setter Property="FontWeight"
+                    Value="Bold"/>
+            <Setter Property="Cursor"
+                    Value="Hand"/>
+            <Setter Property="Padding"
+                    Value="14,8"/>
+        </Style>
+
+    </Application.Resources>
+</Application>
