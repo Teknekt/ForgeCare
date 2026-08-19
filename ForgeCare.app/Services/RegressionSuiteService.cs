@@ -11,6 +11,16 @@ namespace ForgeCare.App.Services;
 
 public sealed class RegressionSuiteService
 {
+    private readonly EvidenceInspectionService _evidenceInspectionService;
+
+    public RegressionSuiteService(
+        EvidenceInspectionService? evidenceInspectionService = null)
+    {
+        _evidenceInspectionService =
+            evidenceInspectionService ??
+            new EvidenceInspectionService();
+    }
+
     public RegressionSuiteResult Run()
     {
         var suite =
@@ -148,6 +158,8 @@ public sealed class RegressionSuiteService
             "Recovery directory",
             recoveryRoot);
 
+        CheckEvidenceState(suite);
+
         var identity =
             new ReleaseIdentityService()
                 .Inspect();
@@ -232,6 +244,56 @@ public sealed class RegressionSuiteService
             DateTime.Now;
 
         return suite;
+    }
+
+    private void CheckEvidenceState(
+        RegressionSuiteResult suite)
+    {
+        EvidenceHealthResult evidence =
+            _evidenceInspectionService.Inspect();
+
+        if (!evidence.DirectoryExists)
+        {
+            Pass(
+                suite,
+                "Evidence",
+                "Evidence persistence",
+                $"Not created yet; Evidence storage is created lazily after a successful diagnostic. Expected: {evidence.StorageRoot}");
+            return;
+        }
+
+        string detail =
+            $"{evidence.DocumentCount} document(s) · " +
+            $"{evidence.ValidDocumentCount} valid · " +
+            $"{evidence.TotalRecordCount} record(s) · " +
+            $"{evidence.MalformedDocumentCount} malformed · " +
+            $"{evidence.UnsupportedSchemaCount} unsupported schema · " +
+            $"{evidence.InvalidDocumentCount} invalid";
+
+        if (evidence.HasErrors)
+        {
+            Fail(
+                suite,
+                "Evidence",
+                "Evidence persistence",
+                detail + " · " + string.Join(" | ", evidence.Errors));
+        }
+        else if (evidence.HasWarnings)
+        {
+            Warn(
+                suite,
+                "Evidence",
+                "Evidence persistence",
+                detail + " · " + string.Join(" | ", evidence.Warnings));
+        }
+        else
+        {
+            Pass(
+                suite,
+                "Evidence",
+                "Evidence persistence",
+                detail);
+        }
     }
 
     private static void TryDirectoryCheck(

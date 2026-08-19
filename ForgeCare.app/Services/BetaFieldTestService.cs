@@ -17,11 +17,14 @@ public sealed class BetaFieldTestService
     private readonly string _sessionFile;
     private readonly JsonSerializerOptions _json = new() { WriteIndented = true };
 
-    public BetaFieldTestService()
+    public BetaFieldTestService(string? dataRoot = null)
     {
         _directory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ForgeCare", "Beta");
+            dataRoot ??
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "ForgeCare"),
+            "Beta");
 
         _sessionFile = Path.Combine(_directory, "field-test-session.json");
     }
@@ -150,6 +153,12 @@ public sealed class BetaFieldTestService
             new() { Id = "launch", Title = "Launch / Preflight" },
             new() { Id = "settings", Title = "Settings persistence" },
             new() { Id = "diagnostics", Title = "Read-only diagnostics" },
+            new()
+            {
+                Id = "evidence",
+                Title = "Evidence persistence / restart",
+                Detail = "Run System Scan and Deep Analysis, confirm the same-session Evidence JSON contains both sources, restart ForgeCare, and confirm the document remains readable."
+            },
             new() { Id = "workflow", Title = "Guided workflow" },
             new() { Id = "safe-action", Title = "Safe action test" },
             new() { Id = "verify", Title = "Verification scan" },

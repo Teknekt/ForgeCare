@@ -1969,6 +1969,55 @@ public partial class MainWindow : Window
         });
     }
 
+    private void OpenEvidenceFolderButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        string evidenceRoot =
+            EvidenceInspectionService.DefaultStorageRoot;
+
+        if (!Directory.Exists(evidenceRoot))
+        {
+            BetaStatusText.Text =
+                "EVIDENCE NOT CREATED YET";
+
+            MessageBox.Show(
+                this,
+                "No Evidence folder exists yet. ForgeCare creates it after a successful System Scan or Deep Analysis run.",
+                "ForgeCare Evidence",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+
+            return;
+        }
+
+        try
+        {
+            Process.Start(
+                new ProcessStartInfo
+                {
+                    FileName = evidenceRoot,
+                    UseShellExecute = true
+                });
+        }
+        catch (Exception ex)
+        {
+            CrashLogService.Record(
+                ex,
+                "Open Evidence folder");
+
+            BetaStatusText.Text =
+                "EVIDENCE FOLDER COULD NOT BE OPENED";
+
+            MessageBox.Show(
+                this,
+                ex.Message,
+                "ForgeCare Evidence",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
     private void ExportDebugBundleButton_Click(
         object sender,
         RoutedEventArgs e)

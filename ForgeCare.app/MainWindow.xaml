@@ -6491,6 +6491,11 @@
                                             Height="40"
                                             Style="{StaticResource SecondaryActionButtonStyle}"
                                             Click="OpenDiagnosticsFolderButton_Click"/>
+                                    <Button Content="OPEN EVIDENCE FOLDER"
+                                            Height="40"
+                                            Margin="0,10,0,0"
+                                            Style="{StaticResource SecondaryActionButtonStyle}"
+                                            Click="OpenEvidenceFolderButton_Click"/>
                                 </StackPanel>
                             </Border>
 
