@@ -83,6 +83,21 @@ public sealed class EvidenceRecordTests
         Assert.IsFalse(repository.WasCalled);
     }
 
+    [TestMethod]
+    public async Task EvidenceServiceContainsPersistenceFailureWithoutLosingDiagnosticInput()
+    {
+        var service = new EvidenceService(new ThrowingRepository());
+        EvidenceRecord record = TestEvidenceFactory.Create();
+
+        EvidenceCollectionResult result = await service.AddAsync(record);
+
+        Assert.IsFalse(result.Success);
+        Assert.IsEmpty(result.Evidence);
+        Assert.HasCount(1, result.Errors);
+        Assert.AreNotEqual(Guid.Empty, record.Id);
+        Assert.IsEmpty(record.Validate());
+    }
+
     private sealed class RecordingRepository : IEvidenceRepository
     {
         public bool WasCalled { get; private set; }
@@ -110,5 +125,26 @@ public sealed class EvidenceRecordTests
 
         public Task<IReadOnlyList<EvidenceRecord>> GetByCorrelationKeyAsync(string correlationKey, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<EvidenceRecord>>(Array.Empty<EvidenceRecord>());
+    }
+
+    private sealed class ThrowingRepository : IEvidenceRepository
+    {
+        public Task AddAsync(EvidenceRecord record, CancellationToken cancellationToken = default) =>
+            throw new IOException("Injected Evidence persistence failure.");
+
+        public Task AddRangeAsync(IReadOnlyCollection<EvidenceRecord> records, CancellationToken cancellationToken = default) =>
+            throw new IOException("Injected Evidence persistence failure.");
+
+        public Task<EvidenceRecord?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+            throw new IOException("Injected Evidence query failure.");
+
+        public Task<IReadOnlyList<EvidenceRecord>> GetBySessionAsync(string sessionId, CancellationToken cancellationToken = default) =>
+            throw new IOException("Injected Evidence query failure.");
+
+        public Task<IReadOnlyList<EvidenceRecord>> GetByCategoryAsync(EvidenceCategory category, CancellationToken cancellationToken = default) =>
+            throw new IOException("Injected Evidence query failure.");
+
+        public Task<IReadOnlyList<EvidenceRecord>> GetByCorrelationKeyAsync(string correlationKey, CancellationToken cancellationToken = default) =>
+            throw new IOException("Injected Evidence query failure.");
     }
 }

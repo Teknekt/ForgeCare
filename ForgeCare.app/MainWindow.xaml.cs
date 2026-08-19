@@ -45,6 +45,8 @@ public partial class MainWindow : Window
     private readonly StabilityRecoveryService _stabilityRecoveryService;
     private readonly UxStateService _uxStateService;
     private readonly RegressionSuiteService _regressionSuiteService;
+    private readonly EvidenceService _evidenceService;
+    private readonly SystemScanEvidenceAdapter _systemScanEvidenceAdapter;
     private SecureUpdateDownloadResult? _lastSecureUpdateDownload;
     private RemoteUpdateCheckResult? _lastRemoteUpdateCheck;
     private RemoteUpdateSettings _remoteUpdateSettings = new();
@@ -154,6 +156,13 @@ public partial class MainWindow : Window
 
         _regressionSuiteService =
             new RegressionSuiteService();
+
+        _evidenceService =
+            new EvidenceService(
+                new JsonEvidenceRepository());
+
+        _systemScanEvidenceAdapter =
+            new SystemScanEvidenceAdapter();
 
         Loaded +=
             MainWindow_Loaded;
@@ -1606,6 +1615,9 @@ public partial class MainWindow : Window
 
             ScanStatusText.Text =
                 $"Forge completed {snapshot.ScanTime:HH:mm:ss}";
+
+            await CaptureSystemScanEvidenceAsync(
+                snapshot);
         }
         catch (Exception ex)
         {
@@ -1633,6 +1645,79 @@ public partial class MainWindow : Window
 
             ScanButton.Content =
                 "RUN SYSTEM SCAN";
+        }
+    }
+
+    private async Task CaptureSystemScanEvidenceAsync(
+        SystemSnapshot snapshot)
+    {
+        try
+        {
+            string sessionId =
+                _forgeReportService
+                    .Snapshot()
+                    .SessionId;
+
+            if (!Guid.TryParseExact(
+                    sessionId,
+                    "N",
+                    out _))
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        "The active Forge Report session ID is not a valid GUID in N format."),
+                    "System Scan Evidence session validation");
+
+                return;
+            }
+
+            EvidenceCollectionResult collection =
+                _systemScanEvidenceAdapter.Collect(
+                    snapshot,
+                    sessionId);
+
+            if (collection.Warnings.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        string.Join(
+                            Environment.NewLine,
+                            collection.Warnings)),
+                    "System Scan Evidence collection warning");
+            }
+
+            if (collection.Errors.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        string.Join(
+                            Environment.NewLine,
+                            collection.Errors)),
+                    "System Scan Evidence collection failure");
+            }
+
+            if (collection.Evidence.Count == 0)
+                return;
+
+            EvidenceCollectionResult persistence =
+                await _evidenceService.AddRangeAsync(
+                    collection.Evidence);
+
+            if (persistence.Errors.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        string.Join(
+                            Environment.NewLine,
+                            persistence.Errors)),
+                    "System Scan Evidence persistence result");
+            }
+        }
+        catch (Exception ex)
+        {
+            CrashLogService.Record(
+                ex,
+                "System Scan Evidence capture");
         }
     }
 
