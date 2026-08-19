@@ -654,7 +654,7 @@
                                                     <TextBlock Text="{Binding DisplayKey}"
                                                                Foreground="#76808A"
                                                                FontSize="10"
-                                                               TextTrimming="CharacterEllipsis"
+                                                               TextWrapping="Wrap"
                                                                ToolTip="{Binding RawKey}"/>
                                                     <TextBox Grid.Column="1"
                                                              Text="{Binding Value}"
