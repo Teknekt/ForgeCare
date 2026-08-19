@@ -1,0 +1,807 @@
+<UserControl x:Class="ForgeCare.App.Views.EvidenceExplorerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="clr-namespace:ForgeCare.App.Models"
+             xmlns:viewModels="clr-namespace:ForgeCare.App.ViewModels"
+             xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=viewModels:EvidenceExplorerViewModel, IsDesignTimeCreatable=False}"
+             d:DesignWidth="1080"
+             d:DesignHeight="650"
+             Focusable="True"
+             PreviewKeyDown="EvidenceExplorerView_PreviewKeyDown"
+             Background="{StaticResource ForgeBackgroundBrush}">
+
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="ExplorerBorderBrush" Color="#2A2F35"/>
+        <SolidColorBrush x:Key="ExplorerRaisedBrush" Color="#181B1F"/>
+        <SolidColorBrush x:Key="ExplorerSelectedBrush" Color="#211E17"/>
+        <SolidColorBrush x:Key="ExplorerInformationalBrush" Color="#8294A6"/>
+        <SolidColorBrush x:Key="ExplorerLowBrush" Color="#78A58A"/>
+        <SolidColorBrush x:Key="ExplorerMediumBrush" Color="#C7A65B"/>
+        <SolidColorBrush x:Key="ExplorerHighBrush" Color="#D59155"/>
+        <SolidColorBrush x:Key="ExplorerCriticalBrush" Color="#C66C6C"/>
+        <SolidColorBrush x:Key="ExplorerConfidenceBrush" Color="#718EAF"/>
+
+        <Style x:Key="ExplorerPanelStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource ForgeSurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ExplorerBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="Padding" Value="18"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+        </Style>
+
+        <Style x:Key="ExplorerSectionLabelStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource ForgeMutedBrush}"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <Style x:Key="ExplorerSecondaryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#1A1D21"/>
+            <Setter Property="Foreground" Value="#CDD2D7"/>
+            <Setter Property="BorderBrush" Value="#343A40"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="13,8"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle">
+                <Setter.Value>
+                    <Style TargetType="Control">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate>
+                                    <Border BorderBrush="{StaticResource ForgeGoldBrush}"
+                                            BorderThickness="2"
+                                            CornerRadius="3"
+                                            Margin="-3"/>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource ForgeGoldBrush}"/>
+                    <Setter Property="Foreground" Value="{StaticResource ForgeTextBrush}"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.45"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ExplorerSearchTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="#0F1114"/>
+            <Setter Property="Foreground" Value="{StaticResource ForgeTextBrush}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource ForgeGoldBrush}"/>
+            <Setter Property="BorderBrush" Value="#343A40"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Style.Triggers>
+                <Trigger Property="IsKeyboardFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource ForgeGoldBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ExplorerFacetItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Foreground" Value="#B1B7BE"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,7"/>
+            <Setter Property="Margin" Value="0,0,0,3"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="FacetBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="7"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="FacetBorder" Property="Background" Value="#1B1E22"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="FacetBorder" Property="Background" Value="{StaticResource ExplorerSelectedBrush}"/>
+                                <Setter TargetName="FacetBorder" Property="BorderBrush" Value="{StaticResource ForgeGoldBrush}"/>
+                                <Setter Property="Foreground" Value="#F0D58D"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="FacetBorder" Property="BorderThickness" Value="2"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ExplorerEvidenceItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ExplorerBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="14"/>
+            <Setter Property="Margin" Value="0,0,0,9"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Grid>
+                            <Border x:Name="ItemBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="10"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter/>
+                            </Border>
+                            <Border x:Name="SelectedAccent"
+                                    Width="4"
+                                    HorizontalAlignment="Left"
+                                    Background="Transparent"
+                                    CornerRadius="3,0,0,3"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#191C20"/>
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#3A4047"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource ExplorerSelectedBrush}"/>
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{StaticResource ForgeGoldBrush}"/>
+                                <Setter TargetName="SelectedAccent" Property="Background" Value="{StaticResource ForgeGoldBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="ItemBorder" Property="BorderThickness" Value="2"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ExplorerBadgeStyle" TargetType="Border">
+            <Setter Property="Background" Value="#15181C"/>
+            <Setter Property="BorderBrush" Value="#41474E"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="Padding" Value="7,3"/>
+        </Style>
+
+        <Style x:Key="ExplorerSeverityBadgeStyle"
+               TargetType="Border"
+               BasedOn="{StaticResource ExplorerBadgeStyle}">
+            <Setter Property="BorderBrush" Value="{StaticResource ExplorerInformationalBrush}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Severity}" Value="{x:Static models:EvidenceSeverity.Low}">
+                    <Setter Property="BorderBrush" Value="{StaticResource ExplorerLowBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Severity}" Value="{x:Static models:EvidenceSeverity.Medium}">
+                    <Setter Property="BorderBrush" Value="{StaticResource ExplorerMediumBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Severity}" Value="{x:Static models:EvidenceSeverity.High}">
+                    <Setter Property="BorderBrush" Value="{StaticResource ExplorerHighBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Severity}" Value="{x:Static models:EvidenceSeverity.Critical}">
+                    <Setter Property="BorderBrush" Value="{StaticResource ExplorerCriticalBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ExplorerConfidenceBadgeStyle"
+               TargetType="Border"
+               BasedOn="{StaticResource ExplorerBadgeStyle}">
+            <Setter Property="BorderBrush" Value="{StaticResource ExplorerConfidenceBrush}"/>
+        </Style>
+
+        <Style x:Key="ExplorerReadOnlyValueStyle" TargetType="TextBox">
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#C8CDD2"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="IsReadOnlyCaretVisible" Value="True"/>
+        </Style>
+
+        <Style x:Key="ExplorerStatePanelStyle"
+               TargetType="Border"
+               BasedOn="{StaticResource ExplorerPanelStyle}">
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="Padding" Value="36"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="12,24,12,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="18"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel>
+                <TextBlock Text="EVIDENCE"
+                           Foreground="{StaticResource ForgeGoldBrush}"
+                           FontSize="10"
+                           FontWeight="SemiBold"/>
+                <TextBlock Text="EVIDENCE EXPLORER"
+                           Foreground="{StaticResource ForgeTextBrush}"
+                           FontSize="26"
+                           FontWeight="Bold"
+                           Margin="0,4,0,0"/>
+                <TextBlock Text="LOCAL DIAGNOSTIC DATA · CURRENT REPORT SESSION"
+                           Foreground="{StaticResource ForgeMutedBrush}"
+                           FontSize="11"
+                           Margin="0,5,0,0"/>
+                <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                    <TextBlock Text="SESSION"
+                               Foreground="#5F6871"
+                               FontSize="9"
+                               FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding CurrentSessionId, TargetNullValue=SESSION NOT LOADED}"
+                               Foreground="#9DA4AB"
+                               FontFamily="Consolas"
+                               FontSize="10"
+                               Margin="8,0,0,0"/>
+                </StackPanel>
+            </StackPanel>
+
+            <Button Grid.Column="1"
+                    Content="REFRESH"
+                    VerticalAlignment="Center"
+                    Click="RefreshButton_Click"
+                    automation:AutomationProperties.Name="Refresh Evidence">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource ExplorerSecondaryButtonStyle}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding LoadState}" Value="{x:Static models:EvidenceExplorerLoadState.Loading}">
+                                <Setter Property="IsEnabled" Value="False"/>
+                                <Setter Property="Content" Value="LOADING…"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+        </Grid>
+
+        <Grid Grid.Row="2">
+            <Grid x:Name="ReadyWorkspace">
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding LoadState}" Value="{x:Static models:EvidenceExplorerLoadState.Ready}">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="200" MinWidth="190"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="360" MinWidth="330"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*" MinWidth="330"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource ExplorerPanelStyle}" Padding="14">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel>
+                            <TextBlock Text="SEARCH" Style="{StaticResource ExplorerSectionLabelStyle}"/>
+                            <TextBox x:Name="SearchTextBox"
+                                     Style="{StaticResource ExplorerSearchTextBoxStyle}"
+                                     Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Search Evidence fields and metadata"
+                                     automation:AutomationProperties.Name="Search Evidence"/>
+
+                            <Border Height="1" Background="#262B30" Margin="0,16"/>
+
+                            <TextBlock Text="CATEGORY" Style="{StaticResource ExplorerSectionLabelStyle}"/>
+                            <ListBox ItemsSource="{Binding CategoryFacets}"
+                                     SelectedItem="{Binding SelectedCategoryFacet, Mode=TwoWay}"
+                                     ItemContainerStyle="{StaticResource ExplorerFacetItemStyle}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                     automation:AutomationProperties.Name="Evidence category filters">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding DisplayLabel}"
+                                                       FontSize="10"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Count}"
+                                                       Foreground="#737C85"
+                                                       FontSize="10"
+                                                       Margin="8,0,0,0"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <Border Height="1" Background="#262B30" Margin="0,14"/>
+
+                            <TextBlock Text="SOURCE" Style="{StaticResource ExplorerSectionLabelStyle}"/>
+                            <ListBox ItemsSource="{Binding SourceFacets}"
+                                     SelectedItem="{Binding SelectedSourceFacet, Mode=TwoWay}"
+                                     ItemContainerStyle="{StaticResource ExplorerFacetItemStyle}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                     automation:AutomationProperties.Name="Evidence source filters">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding DisplayLabel}"
+                                                       FontSize="10"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Count}"
+                                                       Foreground="#737C85"
+                                                       FontSize="10"
+                                                       Margin="8,0,0,0"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <Button Content="CLEAR FILTERS"
+                                    Style="{StaticResource ExplorerSecondaryButtonStyle}"
+                                    Margin="0,16,0,0"
+                                    Click="ClearFiltersButton_Click"
+                                    automation:AutomationProperties.Name="Clear Evidence filters"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+
+                <Border Grid.Column="2" Style="{StaticResource ExplorerPanelStyle}" Padding="12">
+                    <Grid>
+                        <ListBox x:Name="EvidenceListBox"
+                                 ItemsSource="{Binding VisibleItems}"
+                                 SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                                 ItemContainerStyle="{StaticResource ExplorerEvidenceItemStyle}"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 ScrollViewer.CanContentScroll="True"
+                                 VirtualizingStackPanel.IsVirtualizing="True"
+                                 VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                 automation:AutomationProperties.Name="Evidence records">
+                            <ListBox.Style>
+                                <Style TargetType="ListBox">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsFilteredEmpty}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ListBox.Style>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:EvidenceExplorerItem}">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Title}"
+                                                       Foreground="{StaticResource ForgeTextBrush}"
+                                                       FontSize="12"
+                                                       FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding ValueDisplay}"
+                                                       Foreground="#E2C476"
+                                                       FontSize="12"
+                                                       FontWeight="SemiBold"
+                                                       Margin="10,0,0,0"/>
+                                        </Grid>
+
+                                        <TextBlock Text="{Binding Observation}"
+                                                   Foreground="#9DA4AB"
+                                                   FontSize="11"
+                                                   TextWrapping="Wrap"
+                                                   MaxHeight="34"
+                                                   Margin="0,8,0,10"/>
+
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding SourceDisplay}"
+                                                           Foreground="#89929B"
+                                                           FontSize="9"
+                                                           FontWeight="SemiBold"/>
+                                                <TextBlock Text=" · " Foreground="#505860" FontSize="9"/>
+                                                <TextBlock Text="{Binding TimestampDisplay}"
+                                                           Foreground="#747D86"
+                                                           FontSize="9"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                <Border Style="{StaticResource ExplorerSeverityBadgeStyle}"
+                                                        ToolTip="Severity">
+                                                    <TextBlock Text="{Binding SeverityDisplay}"
+                                                               Foreground="#C5CBD1"
+                                                               FontSize="8"
+                                                               FontWeight="SemiBold"/>
+                                                </Border>
+                                                <Border Style="{StaticResource ExplorerConfidenceBadgeStyle}"
+                                                        Margin="5,0,0,0"
+                                                        ToolTip="Confidence">
+                                                    <TextBlock Text="{Binding ConfidenceDisplay}"
+                                                               Foreground="#AFC1D5"
+                                                               FontSize="8"
+                                                               FontWeight="SemiBold"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <Border Padding="22">
+                            <Border.Style>
+                                <Style TargetType="Border" BasedOn="{StaticResource ExplorerStatePanelStyle}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsFilteredEmpty}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="270">
+                                <TextBlock Text="NO MATCHING EVIDENCE"
+                                           Foreground="{StaticResource ForgeTextBrush}"
+                                           FontSize="16"
+                                           FontWeight="SemiBold"
+                                           TextAlignment="Center"/>
+                                <TextBlock Text="No Evidence matches the current filters."
+                                           Foreground="{StaticResource ForgeMutedBrush}"
+                                           FontSize="11"
+                                           TextAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Margin="0,8,0,14"/>
+                                <Button Content="CLEAR FILTERS"
+                                        Style="{StaticResource ExplorerSecondaryButtonStyle}"
+                                        Click="ClearFiltersButton_Click"
+                                        automation:AutomationProperties.Name="Clear Evidence filters"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="4" Style="{StaticResource ExplorerPanelStyle}" Padding="0">
+                    <Grid>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      Padding="20">
+                            <StackPanel DataContext="{Binding SelectedItem}">
+                                <TextBlock Text="IDENTITY" Style="{StaticResource ExplorerSectionLabelStyle}"/>
+                                <TextBlock Text="{Binding Title}"
+                                           Foreground="{StaticResource ForgeTextBrush}"
+                                           FontSize="20"
+                                           FontWeight="SemiBold"
+                                           TextWrapping="Wrap"/>
+
+                                <Grid Margin="0,14,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="SUBJECT" Foreground="#68717A" FontSize="9" Margin="0,2,0,7"/>
+                                    <TextBox Grid.Column="1" Text="{Binding RawSubject}" Style="{StaticResource ExplorerReadOnlyValueStyle}" Margin="0,0,0,7"/>
+                                    <TextBlock Grid.Row="1" Text="EVIDENCE ID" Foreground="#68717A" FontSize="9" Margin="0,2,0,7"/>
+                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Id}" Style="{StaticResource ExplorerReadOnlyValueStyle}" FontFamily="Consolas" Margin="0,0,0,7"/>
+                                    <TextBlock Grid.Row="2" Text="SESSION ID" Foreground="#68717A" FontSize="9" Margin="0,2,0,0"/>
+                                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SessionId}" Style="{StaticResource ExplorerReadOnlyValueStyle}" FontFamily="Consolas"/>
+                                </Grid>
+
+                                <Border Height="1" Background="#2A2F35" Margin="0,18"/>
+
+                                <TextBlock Text="OBSERVATION" Style="{StaticResource ExplorerSectionLabelStyle}"/>
+                                <TextBlock Text="{Binding Observation}"
+                                           Foreground="#D7DBDF"
+                                           FontSize="13"
+                                           LineHeight="20"
+                                           TextWrapping="Wrap"/>
+
+                                <Border Height="1" Background="#2A2F35" Margin="0,18"/>
+
+                                <StackPanel>
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Value}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock Text="MEASUREMENT" Style="{StaticResource ExplorerSectionLabelStyle}"/>
+                                    <TextBlock Text="{Binding ValueDisplay}"
+                                               Foreground="#E2C476"
+                                               FontSize="24"
+                                               FontWeight="SemiBold"/>
+                                    <Border Height="1" Background="#2A2F35" Margin="0,18"/>
+                                </StackPanel>
+
+                                <TextBlock Text="PROVENANCE" Style="{StaticResource ExplorerSectionLabelStyle}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="SOURCE" Foreground="#68717A" FontSize="9" Margin="0,2,0,7"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding SourceDisplay}" Foreground="#CDD2D7" FontSize="12" Margin="0,0,0,7"/>
+                                    <TextBlock Grid.Row="1" Text="COLLECTOR" Foreground="#68717A" FontSize="9" Margin="0,2,0,7"/>
+                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Collector}" Style="{StaticResource ExplorerReadOnlyValueStyle}" Margin="0,0,0,7"/>
+                                    <TextBlock Grid.Row="2" Text="TIMESTAMP" Foreground="#68717A" FontSize="9" Margin="0,2,0,0"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding TimestampDisplay}" Foreground="#CDD2D7" FontSize="12"/>
+                                </Grid>
+
+                                <Border Height="1" Background="#2A2F35" Margin="0,18"/>
+
+                                <TextBlock Text="ASSESSMENT" Style="{StaticResource ExplorerSectionLabelStyle}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Style="{StaticResource ExplorerSeverityBadgeStyle}" Padding="10,8">
+                                        <StackPanel>
+                                            <TextBlock Text="SEVERITY" Foreground="#747D86" FontSize="8"/>
+                                            <TextBlock Text="{Binding SeverityDisplay}" Foreground="#E1E4E7" FontSize="11" FontWeight="SemiBold" Margin="0,3,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Column="2" Style="{StaticResource ExplorerConfidenceBadgeStyle}" Padding="10,8">
+                                        <StackPanel>
+                                            <TextBlock Text="CONFIDENCE" Foreground="#747D86" FontSize="8"/>
+                                            <TextBlock Text="{Binding ConfidenceDisplay}" Foreground="#B8CBE0" FontSize="11" FontWeight="SemiBold" Margin="0,3,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <StackPanel Margin="0,18,0,0">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding CorrelationKey}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding CorrelationKey}" Value="">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <Border Height="1" Background="#2A2F35" Margin="0,0,0,18"/>
+                                    <TextBlock Text="CORRELATION" Style="{StaticResource ExplorerSectionLabelStyle}"/>
+                                    <TextBox Text="{Binding CorrelationKey}" Style="{StaticResource ExplorerReadOnlyValueStyle}" FontFamily="Consolas"/>
+                                </StackPanel>
+
+                                <StackPanel Margin="0,18,0,0">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Metadata.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <Border Height="1" Background="#2A2F35" Margin="0,0,0,18"/>
+                                    <TextBlock Text="METADATA" Style="{StaticResource ExplorerSectionLabelStyle}"/>
+                                    <ItemsControl ItemsSource="{Binding Metadata}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type models:EvidenceExplorerMetadataItem}">
+                                                <Grid Margin="0,0,0,8">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="145"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="{Binding DisplayKey}"
+                                                               Foreground="#76808A"
+                                                               FontSize="10"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip="{Binding RawKey}"/>
+                                                    <TextBox Grid.Column="1"
+                                                             Text="{Binding Value}"
+                                                             Style="{StaticResource ExplorerReadOnlyValueStyle}"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <Border Background="{StaticResource ForgeSurfaceBrush}"
+                                CornerRadius="14"
+                                Padding="26">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedItem}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock Text="SELECT AN EVIDENCE RECORD TO INSPECT DETAILS"
+                                       Foreground="{StaticResource ForgeMutedBrush}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </Border>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <Border>
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource ExplorerStatePanelStyle}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding LoadState}" Value="{x:Static models:EvidenceExplorerLoadState.NotLoaded}">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520">
+                    <TextBlock Text="EVIDENCE EXPLORER READY" Foreground="{StaticResource ForgeTextBrush}" FontSize="20" FontWeight="SemiBold" TextAlignment="Center"/>
+                    <TextBlock Text="Waiting for the host to provide the current Forge Report session."
+                               Foreground="{StaticResource ForgeMutedBrush}" FontSize="12" TextAlignment="Center" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <Border>
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource ExplorerStatePanelStyle}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding LoadState}" Value="{x:Static models:EvidenceExplorerLoadState.Loading}">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520">
+                    <TextBlock Text="LOADING EVIDENCE" Foreground="{StaticResource ForgeTextBrush}" FontSize="20" FontWeight="SemiBold" TextAlignment="Center"/>
+                    <TextBlock Text="Loading current-session Evidence…" Foreground="{StaticResource ForgeMutedBrush}" FontSize="12" TextAlignment="Center" Margin="0,10,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <Border>
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource ExplorerStatePanelStyle}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding LoadState}" Value="{x:Static models:EvidenceExplorerLoadState.Empty}">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520">
+                    <TextBlock Text="NO EVIDENCE YET" Foreground="{StaticResource ForgeTextBrush}" FontSize="20" FontWeight="SemiBold" TextAlignment="Center"/>
+                    <TextBlock Text="No Evidence has been recorded for this Forge Report session yet.&#x0a;&#x0a;Run System Scan or Deep Analysis, then refresh."
+                               Foreground="{StaticResource ForgeMutedBrush}" FontSize="12" TextAlignment="Center" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <Border>
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource ExplorerStatePanelStyle}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding LoadState}" Value="{x:Static models:EvidenceExplorerLoadState.MalformedDocument}">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560">
+                    <TextBlock Text="EVIDENCE DOCUMENT COULD NOT BE READ" Foreground="#D8B27A" FontSize="20" FontWeight="SemiBold" TextAlignment="Center"/>
+                    <TextBlock Text="The current-session Evidence document is malformed.&#x0a;&#x0a;ForgeCare has left the source document unchanged."
+                               Foreground="{StaticResource ForgeMutedBrush}" FontSize="12" TextAlignment="Center" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <Border>
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource ExplorerStatePanelStyle}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding LoadState}" Value="{x:Static models:EvidenceExplorerLoadState.UnsupportedSchema}">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560">
+                    <TextBlock Text="UNSUPPORTED EVIDENCE SCHEMA" Foreground="#D8B27A" FontSize="20" FontWeight="SemiBold" TextAlignment="Center"/>
+                    <TextBlock Foreground="{StaticResource ForgeMutedBrush}" FontSize="12" TextAlignment="Center" TextWrapping="Wrap" Margin="0,10,0,0">
+                        <Run Text="This Evidence document uses schema version "/><Run Text="{Binding UnsupportedSchemaVersion}"/><Run Text="."/>
+                        <LineBreak/>
+                        <Run Text="This ForgeCare build supports schema version "/><Run Text="{Binding SupportedSchemaVersion}"/><Run Text="."/>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <Border>
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource ExplorerStatePanelStyle}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding LoadState}" Value="{x:Static models:EvidenceExplorerLoadState.LoadError}">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560">
+                    <TextBlock Text="EVIDENCE COULD NOT BE LOADED" Foreground="#D8B27A" FontSize="20" FontWeight="SemiBold" TextAlignment="Center"/>
+                    <TextBlock Text="The source Evidence document was not changed."
+                               Foreground="{StaticResource ForgeMutedBrush}" FontSize="12" TextAlignment="Center" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

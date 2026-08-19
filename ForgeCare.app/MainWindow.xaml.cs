@@ -11,6 +11,7 @@ using System.Windows.Media;
 using System.Windows.Input;
 using ForgeCare.App.Models;
 using ForgeCare.App.Services;
+using ForgeCare.App.ViewModels;
 using Microsoft.Win32;
 
 namespace ForgeCare.App;
@@ -46,6 +47,7 @@ public partial class MainWindow : Window
     private readonly UxStateService _uxStateService;
     private readonly RegressionSuiteService _regressionSuiteService;
     private readonly EvidenceService _evidenceService;
+    private readonly EvidenceExplorerViewModel _evidenceExplorerViewModel;
     private readonly SystemScanEvidenceAdapter _systemScanEvidenceAdapter;
     private readonly DeepAnalysisEvidenceAdapter _deepAnalysisEvidenceAdapter;
     private SecureUpdateDownloadResult? _lastSecureUpdateDownload;
@@ -158,9 +160,22 @@ public partial class MainWindow : Window
         _regressionSuiteService =
             new RegressionSuiteService();
 
+        var evidenceRepository =
+            new JsonEvidenceRepository();
+
         _evidenceService =
             new EvidenceService(
-                new JsonEvidenceRepository());
+                evidenceRepository);
+
+        _evidenceExplorerViewModel =
+            new EvidenceExplorerViewModel(
+                evidenceRepository);
+
+        EvidenceExplorerView.SetViewModel(
+            _evidenceExplorerViewModel);
+
+        EvidenceExplorerView.RefreshRequested +=
+            EvidenceExplorerView_RefreshRequested;
 
         _systemScanEvidenceAdapter =
             new SystemScanEvidenceAdapter();
@@ -1124,6 +1139,72 @@ public partial class MainWindow : Window
     }
 
     // ============================================================
+    // EVIDENCE EXPLORER
+    // ============================================================
+
+    private async void MainTabs_SelectionChanged(
+        object sender,
+        System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (!ReferenceEquals(e.OriginalSource, MainTabs) ||
+            MainTabs.SelectedItem is not System.Windows.Controls.TabItem selectedTab ||
+            !string.Equals(
+                selectedTab.Header?.ToString(),
+                "EVIDENCE",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        SelectMainTab("EVIDENCE");
+
+        try
+        {
+            string sessionId =
+                _forgeReportService.Snapshot().SessionId;
+
+            if (_evidenceExplorerViewModel.LoadState !=
+                    EvidenceExplorerLoadState.NotLoaded &&
+                string.Equals(
+                    _evidenceExplorerViewModel.CurrentSessionId,
+                    sessionId,
+                    StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            await _evidenceExplorerViewModel.LoadSessionAsync(
+                sessionId);
+        }
+        catch (Exception ex)
+        {
+            CrashLogService.Record(
+                ex,
+                "Evidence Explorer activation");
+        }
+    }
+
+    private async void EvidenceExplorerView_RefreshRequested(
+        object? sender,
+        EventArgs e)
+    {
+        try
+        {
+            string sessionId =
+                _forgeReportService.Snapshot().SessionId;
+
+            await _evidenceExplorerViewModel.RefreshAsync(
+                sessionId);
+        }
+        catch (Exception ex)
+        {
+            CrashLogService.Record(
+                ex,
+                "Evidence Explorer refresh");
+        }
+    }
+
+    // ============================================================
     // REGRESSION / FIELD-TEST HARDENING
     // ============================================================
 
@@ -1231,6 +1312,7 @@ public partial class MainWindow : Window
         {
             new NavigationDestination { Header = "DASHBOARD", Shortcut = "Ctrl+1", Description = "Overview, health and next action" },
             new NavigationDestination { Header = "ANALYSIS", Shortcut = "Ctrl+2", Description = "Deep system analysis" },
+            new NavigationDestination { Header = "EVIDENCE", Description = "Inspect current-session diagnostic observations" },
             new NavigationDestination { Header = "SERVICES", Description = "Windows service intelligence" },
             new NavigationDestination { Header = "STORAGE", Description = "Storage and large-file review" },
             new NavigationDestination { Header = "OPTIMIZE", Description = "Optimization findings" },
