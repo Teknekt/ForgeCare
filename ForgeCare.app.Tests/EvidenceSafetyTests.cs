@@ -24,7 +24,8 @@ public sealed class EvidenceSafetyTests
         {
             typeof(EvidenceService),
             typeof(JsonEvidenceRepository),
-            typeof(SystemScanEvidenceAdapter)
+            typeof(SystemScanEvidenceAdapter),
+            typeof(DeepAnalysisEvidenceAdapter)
         };
 
         foreach (Type type in phaseATypes)
@@ -54,5 +55,19 @@ public sealed class EvidenceSafetyTests
             .ToArray();
 
         CollectionAssert.AreEquivalent(new[] { "Collect" }, declaredMethods);
+    }
+
+    [TestMethod]
+    public void DeepAnalysisAdapterOnlyExposesTranslationAndSeverityMapping()
+    {
+        Type adapter = typeof(DeepAnalysisEvidenceAdapter);
+        string[] declaredMethods = adapter
+            .GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Select(method => method.Name)
+            .ToArray();
+
+        CollectionAssert.AreEquivalent(
+            new[] { "Collect", "MapSeverity" },
+            declaredMethods);
     }
 }

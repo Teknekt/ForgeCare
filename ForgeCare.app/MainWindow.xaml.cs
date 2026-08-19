@@ -47,6 +47,7 @@ public partial class MainWindow : Window
     private readonly RegressionSuiteService _regressionSuiteService;
     private readonly EvidenceService _evidenceService;
     private readonly SystemScanEvidenceAdapter _systemScanEvidenceAdapter;
+    private readonly DeepAnalysisEvidenceAdapter _deepAnalysisEvidenceAdapter;
     private SecureUpdateDownloadResult? _lastSecureUpdateDownload;
     private RemoteUpdateCheckResult? _lastRemoteUpdateCheck;
     private RemoteUpdateSettings _remoteUpdateSettings = new();
@@ -163,6 +164,9 @@ public partial class MainWindow : Window
 
         _systemScanEvidenceAdapter =
             new SystemScanEvidenceAdapter();
+
+        _deepAnalysisEvidenceAdapter =
+            new DeepAnalysisEvidenceAdapter();
 
         Loaded +=
             MainWindow_Loaded;
@@ -3584,6 +3588,9 @@ public partial class MainWindow : Window
             AnalysisStatusText.Text =
                 $"Deep analysis completed {result.AnalysisTime:HH:mm:ss}. " +
                 $"Baseline sample {baseline.SampleCount} recorded locally.";
+
+            await CaptureDeepAnalysisEvidenceAsync(
+                result);
         }
         catch (Exception ex)
         {
@@ -3607,6 +3614,79 @@ public partial class MainWindow : Window
 
             RunDeepAnalysisButton.Content =
                 "RUN DEEP ANALYSIS";
+        }
+    }
+
+    private async Task CaptureDeepAnalysisEvidenceAsync(
+        ResourceAnalysisResult result)
+    {
+        try
+        {
+            string sessionId =
+                _forgeReportService
+                    .Snapshot()
+                    .SessionId;
+
+            if (!Guid.TryParseExact(
+                    sessionId,
+                    "N",
+                    out _))
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        "The active Forge Report session ID is not a valid GUID in N format."),
+                    "Deep Analysis Evidence session validation");
+
+                return;
+            }
+
+            EvidenceCollectionResult collection =
+                _deepAnalysisEvidenceAdapter.Collect(
+                    result,
+                    sessionId);
+
+            if (collection.Warnings.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        string.Join(
+                            Environment.NewLine,
+                            collection.Warnings)),
+                    "Deep Analysis Evidence collection warning");
+            }
+
+            if (collection.Errors.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        string.Join(
+                            Environment.NewLine,
+                            collection.Errors)),
+                    "Deep Analysis Evidence collection failure");
+            }
+
+            if (collection.Evidence.Count == 0)
+                return;
+
+            EvidenceCollectionResult persistence =
+                await _evidenceService.AddRangeAsync(
+                    collection.Evidence);
+
+            if (persistence.Errors.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        string.Join(
+                            Environment.NewLine,
+                            persistence.Errors)),
+                    "Deep Analysis Evidence persistence result");
+            }
+        }
+        catch (Exception ex)
+        {
+            CrashLogService.Record(
+                ex,
+                "Deep Analysis Evidence capture");
         }
     }
 
