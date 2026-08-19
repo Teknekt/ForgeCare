@@ -50,6 +50,8 @@ public partial class MainWindow : Window
     private readonly EvidenceExplorerViewModel _evidenceExplorerViewModel;
     private readonly SystemScanEvidenceAdapter _systemScanEvidenceAdapter;
     private readonly DeepAnalysisEvidenceAdapter _deepAnalysisEvidenceAdapter;
+    private readonly StartupIntelligenceService _startupIntelligenceService;
+    private readonly StartupIntelligenceEvidenceAdapter _startupIntelligenceEvidenceAdapter;
     private SecureUpdateDownloadResult? _lastSecureUpdateDownload;
     private RemoteUpdateCheckResult? _lastRemoteUpdateCheck;
     private RemoteUpdateSettings _remoteUpdateSettings = new();
@@ -182,6 +184,16 @@ public partial class MainWindow : Window
 
         _deepAnalysisEvidenceAdapter =
             new DeepAnalysisEvidenceAdapter();
+
+        _startupIntelligenceService =
+            new StartupIntelligenceService(
+                new StartupCommandParser(),
+                new WindowsStartupFileInspector(),
+                new WinVerifyTrustStartupSignatureInspector(),
+                new StartupClassificationPolicy());
+
+        _startupIntelligenceEvidenceAdapter =
+            new StartupIntelligenceEvidenceAdapter();
 
         Loaded +=
             MainWindow_Loaded;
@@ -1704,6 +1716,9 @@ public partial class MainWindow : Window
 
             await CaptureSystemScanEvidenceAsync(
                 snapshot);
+
+            await CaptureStartupIntelligenceEvidenceAsync(
+                snapshot);
         }
         catch (Exception ex)
         {
@@ -1805,6 +1820,95 @@ public partial class MainWindow : Window
                 ex,
                 "System Scan Evidence capture");
         }
+    }
+
+    private async Task CaptureStartupIntelligenceEvidenceAsync(
+        SystemSnapshot snapshot)
+    {
+        try
+        {
+            string sessionId =
+                _forgeReportService
+                    .Snapshot()
+                    .SessionId;
+
+            if (!Guid.TryParseExact(
+                    sessionId,
+                    "N",
+                    out _))
+            {
+                RecordStartupIntelligenceIssue(
+                    "Startup Intelligence Evidence session validation",
+                    "The active Forge Report session ID is invalid.");
+
+                return;
+            }
+
+            StartupIntelligenceResult intelligence =
+                await _startupIntelligenceService.AnalyzeAsync(
+                    snapshot.StartupItems);
+
+            if (intelligence.Warnings.Count > 0 ||
+                intelligence.Errors.Count > 0)
+            {
+                RecordStartupIntelligenceIssue(
+                    "Startup Intelligence analysis result",
+                    $"Startup Intelligence completed with {intelligence.Warnings.Count} entry warning(s) and {intelligence.Errors.Count} entry error(s).");
+            }
+
+            if (intelligence.Entries.Count == 0)
+                return;
+
+            EvidenceCollectionResult collection =
+                _startupIntelligenceEvidenceAdapter.Collect(
+                    intelligence,
+                    sessionId,
+                    snapshot.ScanTime.ToUniversalTime());
+
+            if (collection.Warnings.Count > 0 ||
+                collection.Errors.Count > 0)
+            {
+                RecordStartupIntelligenceIssue(
+                    "Startup Intelligence Evidence collection result",
+                    $"Startup Intelligence Evidence collection completed with {collection.Warnings.Count} warning(s) and {collection.Errors.Count} error(s).");
+            }
+
+            if (collection.Evidence.Count == 0)
+                return;
+
+            EvidenceCollectionResult persistence =
+                await _evidenceService.AddRangeAsync(
+                    collection.Evidence);
+
+            if (persistence.Errors.Count > 0)
+            {
+                RecordStartupIntelligenceIssue(
+                    "Startup Intelligence Evidence persistence result",
+                    $"Startup Intelligence Evidence persistence completed with {persistence.Errors.Count} error(s).");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            RecordStartupIntelligenceIssue(
+                "Startup Intelligence Evidence capture",
+                "Startup Intelligence capture was cancelled after the System Scan completed.");
+        }
+        catch (Exception ex)
+        {
+            RecordStartupIntelligenceIssue(
+                "Startup Intelligence Evidence capture",
+                $"Startup Intelligence capture failed with {ex.GetType().Name} after the System Scan completed.");
+        }
+    }
+
+    private static void RecordStartupIntelligenceIssue(
+        string context,
+        string privacySafeMessage)
+    {
+        CrashLogService.Record(
+            new InvalidOperationException(
+                privacySafeMessage),
+            context);
     }
 
 
