@@ -4,6 +4,8 @@
 
 > **Know your system. Forge it better.**
 
+**[Download v1.0.0](https://github.com/Teknekt/ForgeCare/releases/download/v1.0.0/ForgeCare-v1.0.0-Setup.exe)** · **[Early Tester Guide](TESTING.md)** · **[Report a Bug](https://github.com/Teknekt/ForgeCare/issues/new?template=bug_report.yml)** · **[Share Feedback](https://github.com/Teknekt/ForgeCare/issues/new?template=feedback.yml)** · **[MindForge Studio](https://mindforge-studio.trollifanten.chatgpt.site/)**
+
 ForgeCare is a technician-focused Windows diagnostic, optimization, safety, verification and reporting application from MindForge Studio.
 
 It is designed around a deliberate workflow rather than one-click “PC cleaner” behavior:
@@ -25,6 +27,20 @@ ForgeCare brings common technician workflows into one local-first desktop applic
 - safety journaling and diagnostic bundles
 
 ForgeCare is intended for technicians and technically confident Windows users who want visibility and review before system-changing actions.
+
+## Try it — and help shape v1.1
+
+ForgeCare v1.0.0 is the first public Technician Edition release, and the most useful thing the project can get right now is **real-world technical feedback**.
+
+If you work with Windows machines and can spare roughly 20–30 minutes, the **[ForgeCare Early Tester Program](TESTING.md)** walks through the complete workflow and focuses on the things that matter most:
+
+- where the application earns or loses your trust
+- what is confusing or unreliable
+- which tasks still make you reach for another tool
+- whether Verify and Report are genuinely useful
+- whether you would voluntarily use ForgeCare on a second machine
+
+Five thoughtful external test sessions are more valuable to the project than hundreds of unobserved downloads.
 
 ## Safety philosophy
 
@@ -88,10 +104,19 @@ Create a professional HTML report with technician, device and before/after infor
 
 ForgeCare is an actively developed independent product. Real-world technician feedback is especially valuable as we shape the next release.
 
+- Want to run the structured first-cohort test? [Open the Early Tester Guide](TESTING.md)
 - Found a bug? [Open a bug report](https://github.com/Teknekt/ForgeCare/issues/new?template=bug_report.yml)
 - Have a workflow or product suggestion? [Open a feature/feedback request](https://github.com/Teknekt/ForgeCare/issues/new?template=feedback.yml)
 
 When reporting a problem, include the Windows version, ForgeCare version, what you expected, what happened and reproducible steps where possible. If you create a Debug Bundle, review its contents before sharing it.
+
+## Support development
+
+ForgeCare is currently **free to download and use**. There is no paywall around the v1.0.0 release and no feature is being held back from the early tester program.
+
+If ForgeCare saves you time, helps with a real machine, or you simply want to support continued development, voluntary support for **MindForge Studio** is welcome. Support goes back into testing, development and future work from the Forge.
+
+*A direct Ko-fi support link will be added here once the public profile URL is confirmed.*
 
 ## Current status and roadmap
 
@@ -114,8 +139,10 @@ Some files in the source tree document pre-1.0 beta and external-machine validat
 
 ## About MindForge Studio
 
-ForgeCare is built by **MindForge Studio**, an independent technology studio building practical software, AI systems and experimental hardware for technicians, developers and intelligent computing workflows.
+ForgeCare is **Release 001 from MindForge Studio** — an independent multidisciplinary workshop where engineering and imagination meet.
 
-**Practical technology for people who work with technology.**
+MindForge follows ideas across disciplines: software and intelligent systems, physical prototypes and fabrication, design and art, music, storytelling and experimental creative work. ForgeCare comes from the technical side of that wider studio: practical technology built around real human work.
+
+**Where technology meets imagination, and ideas are forged into reality.**
 
 **FORGE. BUILD. IMAGINE.**
