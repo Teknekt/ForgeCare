@@ -116,7 +116,7 @@ ForgeCare is currently **free to download and use**. There is no paywall around 
 
 If ForgeCare saves you time, helps with a real machine, or you simply want to support continued development, voluntary support for **MindForge Studio** is welcome. Support goes back into testing, development and future work from the Forge.
 
-*A direct Ko-fi support link will be added here once the public profile URL is confirmed.*
+**[Support MindForge Studio on Ko-fi](https://ko-fi.com/nullfeather)**
 
 ## Current status and roadmap
 
