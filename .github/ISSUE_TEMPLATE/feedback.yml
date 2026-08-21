@@ -1,0 +1,34 @@
+name: Feature or workflow feedback
+description: Suggest an improvement based on a technician workflow or real use case
+title: "[Feedback]: "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ForgeCare priorities are driven by technician usefulness and validated workflows. Tell us about the problem before prescribing a feature when possible.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What technician problem or workflow are you trying to improve?
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: How do you handle this today?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Suggested improvement
+    validations:
+      required: true
+  - type: textarea
+    id: value
+    attributes:
+      label: Why would this be useful?
+      description: Time saved, safety, clarity, reporting, repeatability, diagnostics quality, etc.
+    validations:
+      required: true
