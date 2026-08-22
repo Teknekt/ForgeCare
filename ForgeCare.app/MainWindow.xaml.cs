@@ -52,6 +52,8 @@ public partial class MainWindow : Window
     private readonly DeepAnalysisEvidenceAdapter _deepAnalysisEvidenceAdapter;
     private readonly StartupIntelligenceService _startupIntelligenceService;
     private readonly StartupIntelligenceEvidenceAdapter _startupIntelligenceEvidenceAdapter;
+    private readonly ProcessIntelligenceService _processIntelligenceService;
+    private readonly ProcessIntelligenceEvidenceAdapter _processIntelligenceEvidenceAdapter;
     private SecureUpdateDownloadResult? _lastSecureUpdateDownload;
     private RemoteUpdateCheckResult? _lastRemoteUpdateCheck;
     private RemoteUpdateSettings _remoteUpdateSettings = new();
@@ -185,15 +187,31 @@ public partial class MainWindow : Window
         _deepAnalysisEvidenceAdapter =
             new DeepAnalysisEvidenceAdapter();
 
+        var fileInspector =
+            new WindowsStartupFileInspector();
+
+        var signatureInspector =
+            new WinVerifyTrustStartupSignatureInspector();
+
         _startupIntelligenceService =
             new StartupIntelligenceService(
                 new StartupCommandParser(),
-                new WindowsStartupFileInspector(),
-                new WinVerifyTrustStartupSignatureInspector(),
+                fileInspector,
+                signatureInspector,
                 new StartupClassificationPolicy());
 
         _startupIntelligenceEvidenceAdapter =
             new StartupIntelligenceEvidenceAdapter();
+
+        _processIntelligenceService =
+            new ProcessIntelligenceService(
+                new WindowsProcessExecutableInspector(
+                    fileInspector,
+                    signatureInspector),
+                new ProcessClassificationPolicy());
+
+        _processIntelligenceEvidenceAdapter =
+            new ProcessIntelligenceEvidenceAdapter();
 
         Loaded +=
             MainWindow_Loaded;
@@ -3826,6 +3844,9 @@ public partial class MainWindow : Window
 
             await CaptureDeepAnalysisEvidenceAsync(
                 result);
+
+            await CaptureProcessIntelligenceEvidenceAsync(
+                result);
         }
         catch (Exception ex)
         {
@@ -3922,6 +3943,100 @@ public partial class MainWindow : Window
             CrashLogService.Record(
                 ex,
                 "Deep Analysis Evidence capture");
+        }
+    }
+
+    private async Task CaptureProcessIntelligenceEvidenceAsync(
+        ResourceAnalysisResult result)
+    {
+        try
+        {
+            string sessionId =
+                _forgeReportService
+                    .Snapshot()
+                    .SessionId;
+
+            if (!Guid.TryParseExact(sessionId, "N", out _))
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        "The active Forge Report session ID is not a valid GUID in N format."),
+                    "Process Intelligence Evidence session validation");
+                return;
+            }
+
+            if (result.ProcessObservations.Count == 0)
+                return;
+
+            ProcessIntelligenceResult intelligence =
+                await _processIntelligenceService
+                    .AnalyzeAsync(result.ProcessObservations);
+
+            if (intelligence.Warnings.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        $"Process Intelligence completed with {intelligence.Warnings.Count} warning(s)."),
+                    "Process Intelligence collection warning");
+            }
+
+            if (intelligence.Errors.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        $"Process Intelligence completed with {intelligence.Errors.Count} error(s)."),
+                    "Process Intelligence collection failure");
+            }
+
+            EvidenceCollectionResult collection =
+                _processIntelligenceEvidenceAdapter.Collect(
+                    intelligence,
+                    sessionId,
+                    result.AnalysisTime.ToUniversalTime());
+
+            if (collection.Warnings.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        $"Process Intelligence Evidence produced {collection.Warnings.Count} warning(s)."),
+                    "Process Intelligence Evidence collection warning");
+            }
+
+            if (collection.Errors.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        $"Process Intelligence Evidence produced {collection.Errors.Count} error(s)."),
+                    "Process Intelligence Evidence collection failure");
+            }
+
+            if (collection.Evidence.Count == 0)
+                return;
+
+            EvidenceCollectionResult persistence =
+                await _evidenceService.AddRangeAsync(collection.Evidence);
+
+            if (persistence.Errors.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        $"Process Intelligence Evidence persistence produced {persistence.Errors.Count} error(s)."),
+                    "Process Intelligence Evidence persistence result");
+            }
+        }
+        catch (OperationCanceledException ex)
+        {
+            CrashLogService.Record(
+                new OperationCanceledException(
+                    $"Process Intelligence Evidence capture was canceled ({ex.GetType().Name})."),
+                "Process Intelligence Evidence capture canceled");
+        }
+        catch (Exception ex)
+        {
+            CrashLogService.Record(
+                new InvalidOperationException(
+                    $"Process Intelligence Evidence capture failed ({ex.GetType().Name})."),
+                "Process Intelligence Evidence capture");
         }
     }
 

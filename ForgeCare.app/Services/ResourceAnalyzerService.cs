@@ -31,6 +31,9 @@ public class ResourceAnalyzerService
         var processResults =
             new List<ResourceProcessInfo>();
 
+        var processObservations =
+            new List<ProcessInstanceObservation>();
+
         double totalCpu =
             0;
 
@@ -38,18 +41,24 @@ public class ResourceAnalyzerService
         {
             try
             {
-                TimeSpan currentCpu =
-                    process.TotalProcessorTime;
+                int processId = process.Id;
+                TimeSpan currentCpu = process.TotalProcessorTime;
+                DateTime? startTimeUtc = TryGetStartTimeUtc(process);
+                string? executablePath = TryGetExecutablePath(process);
+                string rawProcessName = process.ProcessName;
+                string processName = string.IsNullOrWhiteSpace(rawProcessName)
+                    ? $"PID {processId}"
+                    : rawProcessName;
 
-                firstSample.TryGetValue(
-                    process.Id,
-                    out TimeSpan previousCpu);
-
-                double cpuPercent =
-                    CalculateCpuPercent(
-                        previousCpu,
-                        currentCpu,
-                        stopwatch.Elapsed.TotalMilliseconds);
+                bool hasBaseline = firstSample.TryGetValue(processId, out ProcessCpuSample previousSample);
+                ProcessCpuSample? baseline = hasBaseline
+                    ? previousSample
+                    : null;
+                double cpuPercent = ProcessCpuSampleCalculator.CalculatePercent(
+                    baseline,
+                    new ProcessCpuSample(processId, currentCpu, startTimeUtc),
+                    stopwatch.Elapsed.TotalMilliseconds,
+                    Environment.ProcessorCount);
 
                 double memoryMb =
                     process.WorkingSet64 /
@@ -81,13 +90,10 @@ public class ResourceAnalyzerService
                     new ResourceProcessInfo
                     {
                         ProcessId =
-                            process.Id,
+                            processId,
 
                         Name =
-                            string.IsNullOrWhiteSpace(
-                                process.ProcessName)
-                                ? $"PID {process.Id}"
-                                : process.ProcessName,
+                            processName,
 
                         CpuPercent =
                             Math.Round(
@@ -114,6 +120,19 @@ public class ResourceAnalyzerService
                         PrimaryResource =
                             primaryResource
                     });
+
+                processObservations.Add(
+                    new ProcessInstanceObservation(
+                        processId,
+                        processName,
+                        startTimeUtc,
+                        executablePath,
+                        Math.Round(cpuPercent, 1),
+                        Math.Round(memoryMb, 0),
+                        Math.Round(memoryPercent, 1),
+                        pressureScore,
+                        GetPressureLevel(pressureScore),
+                        primaryResource));
 
                 totalCpu +=
                     cpuPercent;
@@ -229,7 +248,13 @@ public class ResourceAnalyzerService
                     DateTime.Now,
 
                 TopProcesses =
-                    topProcesses
+                    topProcesses,
+
+                ProcessObservations =
+                    processObservations
+                        .OrderBy(item => item.ProcessId)
+                        .ThenBy(item => item.StartTimeUtc)
+                        .ToArray()
             };
 
         result.Insights =
@@ -239,19 +264,22 @@ public class ResourceAnalyzerService
         return result;
     }
 
-    private static Dictionary<int, TimeSpan>
+    private static Dictionary<int, ProcessCpuSample>
         CaptureCpuTimes()
     {
         var values =
-            new Dictionary<int, TimeSpan>();
+            new Dictionary<int, ProcessCpuSample>();
 
         foreach (var process in
                  Process.GetProcesses())
         {
             try
             {
-                values[process.Id] =
-                    process.TotalProcessorTime;
+                int processId = process.Id;
+                values[processId] = new ProcessCpuSample(
+                    processId,
+                    process.TotalProcessorTime,
+                    TryGetStartTimeUtc(process));
             }
             catch
             {
@@ -266,32 +294,28 @@ public class ResourceAnalyzerService
         return values;
     }
 
-    private static double CalculateCpuPercent(
-        TimeSpan previous,
-        TimeSpan current,
-        double elapsedMilliseconds)
+    private static DateTime? TryGetStartTimeUtc(Process process)
     {
-        if (elapsedMilliseconds <= 0)
+        try
         {
-            return 0;
+            return process.StartTime.ToUniversalTime();
         }
+        catch
+        {
+            return null;
+        }
+    }
 
-        double deltaMilliseconds =
-            Math.Max(
-                0,
-                (current - previous)
-                .TotalMilliseconds);
-
-        double cpu =
-            deltaMilliseconds /
-            elapsedMilliseconds /
-            Environment.ProcessorCount *
-            100;
-
-        return Math.Clamp(
-            cpu,
-            0,
-            100);
+    private static string? TryGetExecutablePath(Process process)
+    {
+        try
+        {
+            return process.MainModule?.FileName;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static int CalculatePressureScore(
