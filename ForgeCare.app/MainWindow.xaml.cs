@@ -11,6 +11,7 @@ using System.Windows.Media;
 using System.Windows.Input;
 using ForgeCare.App.Models;
 using ForgeCare.App.Services;
+using ForgeCare.App.ViewModels;
 using Microsoft.Win32;
 
 namespace ForgeCare.App;
@@ -45,6 +46,14 @@ public partial class MainWindow : Window
     private readonly StabilityRecoveryService _stabilityRecoveryService;
     private readonly UxStateService _uxStateService;
     private readonly RegressionSuiteService _regressionSuiteService;
+    private readonly EvidenceService _evidenceService;
+    private readonly EvidenceExplorerViewModel _evidenceExplorerViewModel;
+    private readonly SystemScanEvidenceAdapter _systemScanEvidenceAdapter;
+    private readonly DeepAnalysisEvidenceAdapter _deepAnalysisEvidenceAdapter;
+    private readonly StartupIntelligenceService _startupIntelligenceService;
+    private readonly StartupIntelligenceEvidenceAdapter _startupIntelligenceEvidenceAdapter;
+    private readonly ProcessIntelligenceService _processIntelligenceService;
+    private readonly ProcessIntelligenceEvidenceAdapter _processIntelligenceEvidenceAdapter;
     private SecureUpdateDownloadResult? _lastSecureUpdateDownload;
     private RemoteUpdateCheckResult? _lastRemoteUpdateCheck;
     private RemoteUpdateSettings _remoteUpdateSettings = new();
@@ -154,6 +163,55 @@ public partial class MainWindow : Window
 
         _regressionSuiteService =
             new RegressionSuiteService();
+
+        var evidenceRepository =
+            new JsonEvidenceRepository();
+
+        _evidenceService =
+            new EvidenceService(
+                evidenceRepository);
+
+        _evidenceExplorerViewModel =
+            new EvidenceExplorerViewModel(
+                evidenceRepository);
+
+        EvidenceExplorerView.SetViewModel(
+            _evidenceExplorerViewModel);
+
+        EvidenceExplorerView.RefreshRequested +=
+            EvidenceExplorerView_RefreshRequested;
+
+        _systemScanEvidenceAdapter =
+            new SystemScanEvidenceAdapter();
+
+        _deepAnalysisEvidenceAdapter =
+            new DeepAnalysisEvidenceAdapter();
+
+        var fileInspector =
+            new WindowsStartupFileInspector();
+
+        var signatureInspector =
+            new WinVerifyTrustStartupSignatureInspector();
+
+        _startupIntelligenceService =
+            new StartupIntelligenceService(
+                new StartupCommandParser(),
+                fileInspector,
+                signatureInspector,
+                new StartupClassificationPolicy());
+
+        _startupIntelligenceEvidenceAdapter =
+            new StartupIntelligenceEvidenceAdapter();
+
+        _processIntelligenceService =
+            new ProcessIntelligenceService(
+                new WindowsProcessExecutableInspector(
+                    fileInspector,
+                    signatureInspector),
+                new ProcessClassificationPolicy());
+
+        _processIntelligenceEvidenceAdapter =
+            new ProcessIntelligenceEvidenceAdapter();
 
         Loaded +=
             MainWindow_Loaded;
@@ -1111,6 +1169,72 @@ public partial class MainWindow : Window
     }
 
     // ============================================================
+    // EVIDENCE EXPLORER
+    // ============================================================
+
+    private async void MainTabs_SelectionChanged(
+        object sender,
+        System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (!ReferenceEquals(e.OriginalSource, MainTabs) ||
+            MainTabs.SelectedItem is not System.Windows.Controls.TabItem selectedTab ||
+            !string.Equals(
+                selectedTab.Header?.ToString(),
+                "EVIDENCE",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        SelectMainTab("EVIDENCE");
+
+        try
+        {
+            string sessionId =
+                _forgeReportService.Snapshot().SessionId;
+
+            if (_evidenceExplorerViewModel.LoadState !=
+                    EvidenceExplorerLoadState.NotLoaded &&
+                string.Equals(
+                    _evidenceExplorerViewModel.CurrentSessionId,
+                    sessionId,
+                    StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            await _evidenceExplorerViewModel.LoadSessionAsync(
+                sessionId);
+        }
+        catch (Exception ex)
+        {
+            CrashLogService.Record(
+                ex,
+                "Evidence Explorer activation");
+        }
+    }
+
+    private async void EvidenceExplorerView_RefreshRequested(
+        object? sender,
+        EventArgs e)
+    {
+        try
+        {
+            string sessionId =
+                _forgeReportService.Snapshot().SessionId;
+
+            await _evidenceExplorerViewModel.RefreshAsync(
+                sessionId);
+        }
+        catch (Exception ex)
+        {
+            CrashLogService.Record(
+                ex,
+                "Evidence Explorer refresh");
+        }
+    }
+
+    // ============================================================
     // REGRESSION / FIELD-TEST HARDENING
     // ============================================================
 
@@ -1218,6 +1342,7 @@ public partial class MainWindow : Window
         {
             new NavigationDestination { Header = "DASHBOARD", Shortcut = "Ctrl+1", Description = "Overview, health and next action" },
             new NavigationDestination { Header = "ANALYSIS", Shortcut = "Ctrl+2", Description = "Deep system analysis" },
+            new NavigationDestination { Header = "EVIDENCE", Description = "Inspect current-session diagnostic observations" },
             new NavigationDestination { Header = "SERVICES", Description = "Windows service intelligence" },
             new NavigationDestination { Header = "STORAGE", Description = "Storage and large-file review" },
             new NavigationDestination { Header = "OPTIMIZE", Description = "Optimization findings" },
@@ -1606,6 +1731,12 @@ public partial class MainWindow : Window
 
             ScanStatusText.Text =
                 $"Forge completed {snapshot.ScanTime:HH:mm:ss}";
+
+            await CaptureSystemScanEvidenceAsync(
+                snapshot);
+
+            await CaptureStartupIntelligenceEvidenceAsync(
+                snapshot);
         }
         catch (Exception ex)
         {
@@ -1634,6 +1765,168 @@ public partial class MainWindow : Window
             ScanButton.Content =
                 "RUN SYSTEM SCAN";
         }
+    }
+
+    private async Task CaptureSystemScanEvidenceAsync(
+        SystemSnapshot snapshot)
+    {
+        try
+        {
+            string sessionId =
+                _forgeReportService
+                    .Snapshot()
+                    .SessionId;
+
+            if (!Guid.TryParseExact(
+                    sessionId,
+                    "N",
+                    out _))
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        "The active Forge Report session ID is not a valid GUID in N format."),
+                    "System Scan Evidence session validation");
+
+                return;
+            }
+
+            EvidenceCollectionResult collection =
+                _systemScanEvidenceAdapter.Collect(
+                    snapshot,
+                    sessionId);
+
+            if (collection.Warnings.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        string.Join(
+                            Environment.NewLine,
+                            collection.Warnings)),
+                    "System Scan Evidence collection warning");
+            }
+
+            if (collection.Errors.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        string.Join(
+                            Environment.NewLine,
+                            collection.Errors)),
+                    "System Scan Evidence collection failure");
+            }
+
+            if (collection.Evidence.Count == 0)
+                return;
+
+            EvidenceCollectionResult persistence =
+                await _evidenceService.AddRangeAsync(
+                    collection.Evidence);
+
+            if (persistence.Errors.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        string.Join(
+                            Environment.NewLine,
+                            persistence.Errors)),
+                    "System Scan Evidence persistence result");
+            }
+        }
+        catch (Exception ex)
+        {
+            CrashLogService.Record(
+                ex,
+                "System Scan Evidence capture");
+        }
+    }
+
+    private async Task CaptureStartupIntelligenceEvidenceAsync(
+        SystemSnapshot snapshot)
+    {
+        try
+        {
+            string sessionId =
+                _forgeReportService
+                    .Snapshot()
+                    .SessionId;
+
+            if (!Guid.TryParseExact(
+                    sessionId,
+                    "N",
+                    out _))
+            {
+                RecordStartupIntelligenceIssue(
+                    "Startup Intelligence Evidence session validation",
+                    "The active Forge Report session ID is invalid.");
+
+                return;
+            }
+
+            StartupIntelligenceResult intelligence =
+                await _startupIntelligenceService.AnalyzeAsync(
+                    snapshot.StartupItems);
+
+            if (intelligence.Warnings.Count > 0 ||
+                intelligence.Errors.Count > 0)
+            {
+                RecordStartupIntelligenceIssue(
+                    "Startup Intelligence analysis result",
+                    $"Startup Intelligence completed with {intelligence.Warnings.Count} entry warning(s) and {intelligence.Errors.Count} entry error(s).");
+            }
+
+            if (intelligence.Entries.Count == 0)
+                return;
+
+            EvidenceCollectionResult collection =
+                _startupIntelligenceEvidenceAdapter.Collect(
+                    intelligence,
+                    sessionId,
+                    snapshot.ScanTime.ToUniversalTime());
+
+            if (collection.Warnings.Count > 0 ||
+                collection.Errors.Count > 0)
+            {
+                RecordStartupIntelligenceIssue(
+                    "Startup Intelligence Evidence collection result",
+                    $"Startup Intelligence Evidence collection completed with {collection.Warnings.Count} warning(s) and {collection.Errors.Count} error(s).");
+            }
+
+            if (collection.Evidence.Count == 0)
+                return;
+
+            EvidenceCollectionResult persistence =
+                await _evidenceService.AddRangeAsync(
+                    collection.Evidence);
+
+            if (persistence.Errors.Count > 0)
+            {
+                RecordStartupIntelligenceIssue(
+                    "Startup Intelligence Evidence persistence result",
+                    $"Startup Intelligence Evidence persistence completed with {persistence.Errors.Count} error(s).");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            RecordStartupIntelligenceIssue(
+                "Startup Intelligence Evidence capture",
+                "Startup Intelligence capture was cancelled after the System Scan completed.");
+        }
+        catch (Exception ex)
+        {
+            RecordStartupIntelligenceIssue(
+                "Startup Intelligence Evidence capture",
+                $"Startup Intelligence capture failed with {ex.GetType().Name} after the System Scan completed.");
+        }
+    }
+
+    private static void RecordStartupIntelligenceIssue(
+        string context,
+        string privacySafeMessage)
+    {
+        CrashLogService.Record(
+            new InvalidOperationException(
+                privacySafeMessage),
+            context);
     }
 
 
@@ -1878,6 +2171,55 @@ public partial class MainWindow : Window
             FileName = CrashLogService.DiagnosticsRoot,
             UseShellExecute = true
         });
+    }
+
+    private void OpenEvidenceFolderButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        string evidenceRoot =
+            EvidenceInspectionService.DefaultStorageRoot;
+
+        if (!Directory.Exists(evidenceRoot))
+        {
+            BetaStatusText.Text =
+                "EVIDENCE NOT CREATED YET";
+
+            MessageBox.Show(
+                this,
+                "No Evidence folder exists yet. ForgeCare creates it after a successful System Scan or Deep Analysis run.",
+                "ForgeCare Evidence",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+
+            return;
+        }
+
+        try
+        {
+            Process.Start(
+                new ProcessStartInfo
+                {
+                    FileName = evidenceRoot,
+                    UseShellExecute = true
+                });
+        }
+        catch (Exception ex)
+        {
+            CrashLogService.Record(
+                ex,
+                "Open Evidence folder");
+
+            BetaStatusText.Text =
+                "EVIDENCE FOLDER COULD NOT BE OPENED";
+
+            MessageBox.Show(
+                this,
+                ex.Message,
+                "ForgeCare Evidence",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
     }
 
     private void ExportDebugBundleButton_Click(
@@ -3499,6 +3841,12 @@ public partial class MainWindow : Window
             AnalysisStatusText.Text =
                 $"Deep analysis completed {result.AnalysisTime:HH:mm:ss}. " +
                 $"Baseline sample {baseline.SampleCount} recorded locally.";
+
+            await CaptureDeepAnalysisEvidenceAsync(
+                result);
+
+            await CaptureProcessIntelligenceEvidenceAsync(
+                result);
         }
         catch (Exception ex)
         {
@@ -3522,6 +3870,173 @@ public partial class MainWindow : Window
 
             RunDeepAnalysisButton.Content =
                 "RUN DEEP ANALYSIS";
+        }
+    }
+
+    private async Task CaptureDeepAnalysisEvidenceAsync(
+        ResourceAnalysisResult result)
+    {
+        try
+        {
+            string sessionId =
+                _forgeReportService
+                    .Snapshot()
+                    .SessionId;
+
+            if (!Guid.TryParseExact(
+                    sessionId,
+                    "N",
+                    out _))
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        "The active Forge Report session ID is not a valid GUID in N format."),
+                    "Deep Analysis Evidence session validation");
+
+                return;
+            }
+
+            EvidenceCollectionResult collection =
+                _deepAnalysisEvidenceAdapter.Collect(
+                    result,
+                    sessionId);
+
+            if (collection.Warnings.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        string.Join(
+                            Environment.NewLine,
+                            collection.Warnings)),
+                    "Deep Analysis Evidence collection warning");
+            }
+
+            if (collection.Errors.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        string.Join(
+                            Environment.NewLine,
+                            collection.Errors)),
+                    "Deep Analysis Evidence collection failure");
+            }
+
+            if (collection.Evidence.Count == 0)
+                return;
+
+            EvidenceCollectionResult persistence =
+                await _evidenceService.AddRangeAsync(
+                    collection.Evidence);
+
+            if (persistence.Errors.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        string.Join(
+                            Environment.NewLine,
+                            persistence.Errors)),
+                    "Deep Analysis Evidence persistence result");
+            }
+        }
+        catch (Exception ex)
+        {
+            CrashLogService.Record(
+                ex,
+                "Deep Analysis Evidence capture");
+        }
+    }
+
+    private async Task CaptureProcessIntelligenceEvidenceAsync(
+        ResourceAnalysisResult result)
+    {
+        try
+        {
+            string sessionId =
+                _forgeReportService
+                    .Snapshot()
+                    .SessionId;
+
+            if (!Guid.TryParseExact(sessionId, "N", out _))
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        "The active Forge Report session ID is not a valid GUID in N format."),
+                    "Process Intelligence Evidence session validation");
+                return;
+            }
+
+            if (result.ProcessObservations.Count == 0)
+                return;
+
+            ProcessIntelligenceResult intelligence =
+                await _processIntelligenceService
+                    .AnalyzeAsync(result.ProcessObservations);
+
+            if (intelligence.Warnings.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        $"Process Intelligence completed with {intelligence.Warnings.Count} warning(s)."),
+                    "Process Intelligence collection warning");
+            }
+
+            if (intelligence.Errors.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        $"Process Intelligence completed with {intelligence.Errors.Count} error(s)."),
+                    "Process Intelligence collection failure");
+            }
+
+            EvidenceCollectionResult collection =
+                _processIntelligenceEvidenceAdapter.Collect(
+                    intelligence,
+                    sessionId,
+                    result.AnalysisTime.ToUniversalTime());
+
+            if (collection.Warnings.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        $"Process Intelligence Evidence produced {collection.Warnings.Count} warning(s)."),
+                    "Process Intelligence Evidence collection warning");
+            }
+
+            if (collection.Errors.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        $"Process Intelligence Evidence produced {collection.Errors.Count} error(s)."),
+                    "Process Intelligence Evidence collection failure");
+            }
+
+            if (collection.Evidence.Count == 0)
+                return;
+
+            EvidenceCollectionResult persistence =
+                await _evidenceService.AddRangeAsync(collection.Evidence);
+
+            if (persistence.Errors.Count > 0)
+            {
+                CrashLogService.Record(
+                    new InvalidOperationException(
+                        $"Process Intelligence Evidence persistence produced {persistence.Errors.Count} error(s)."),
+                    "Process Intelligence Evidence persistence result");
+            }
+        }
+        catch (OperationCanceledException ex)
+        {
+            CrashLogService.Record(
+                new OperationCanceledException(
+                    $"Process Intelligence Evidence capture was canceled ({ex.GetType().Name})."),
+                "Process Intelligence Evidence capture canceled");
+        }
+        catch (Exception ex)
+        {
+            CrashLogService.Record(
+                new InvalidOperationException(
+                    $"Process Intelligence Evidence capture failed ({ex.GetType().Name})."),
+                "Process Intelligence Evidence capture");
         }
     }
 

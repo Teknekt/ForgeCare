@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.IO.Compression;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -9,10 +10,28 @@ namespace ForgeCare.App.Services;
 
 public sealed class BetaDiagnosticsService
 {
-    public string DataRoot =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ForgeCare");
+    private readonly string _dataRoot;
+    private readonly string _diagnosticsRoot;
+    private readonly string _crashLogPath;
+
+    public BetaDiagnosticsService(
+        string? dataRoot = null,
+        string? diagnosticsRoot = null,
+        string? crashLogPath = null)
+    {
+        _dataRoot = dataRoot ??
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "ForgeCare");
+
+        _diagnosticsRoot = diagnosticsRoot ??
+            CrashLogService.DiagnosticsRoot;
+
+        _crashLogPath = crashLogPath ??
+            CrashLogService.CrashLogPath;
+    }
+
+    public string DataRoot => _dataRoot;
 
     public string GetEnvironmentSummary()
     {
@@ -44,11 +63,11 @@ public sealed class BetaDiagnosticsService
             throw new InvalidOperationException("Could not resolve the debug bundle destination.");
 
         Directory.CreateDirectory(destination);
-        Directory.CreateDirectory(CrashLogService.DiagnosticsRoot);
+        Directory.CreateDirectory(_diagnosticsRoot);
 
         string staging = Path.Combine(
-            CrashLogService.DiagnosticsRoot,
-            "bundle-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
+            _diagnosticsRoot,
+            "bundle-" + Guid.NewGuid().ToString("N"));
 
         if (Directory.Exists(staging))
             Directory.Delete(staging, true);
@@ -61,17 +80,30 @@ public sealed class BetaDiagnosticsService
             Encoding.UTF8);
 
         CopyIfExists(
-            CrashLogService.CrashLogPath,
+            _crashLogPath,
             Path.Combine(staging, "crash.log"));
 
-        foreach (string folderName in new[] { "Settings", "Reports", "Safety" })
+        var copyWarnings = new List<string>();
+
+        foreach (string folderName in new[] { "Settings", "Reports", "Safety", "Evidence" })
         {
             string source = Path.Combine(DataRoot, folderName);
             if (!Directory.Exists(source))
                 continue;
 
             string target = Path.Combine(staging, folderName);
-            CopyDirectoryBestEffort(source, target);
+            CopyDirectoryBestEffort(
+                source,
+                target,
+                copyWarnings);
+        }
+
+        if (copyWarnings.Count > 0)
+        {
+            File.WriteAllLines(
+                Path.Combine(staging, "bundle-copy-warnings.txt"),
+                copyWarnings,
+                Encoding.UTF8);
         }
 
         if (File.Exists(fullZip))
@@ -87,22 +119,35 @@ public sealed class BetaDiagnosticsService
         return fullZip;
     }
 
-    private static void CopyDirectoryBestEffort(string source, string target)
+    private static void CopyDirectoryBestEffort(
+        string source,
+        string target,
+        List<string> warnings)
     {
         Directory.CreateDirectory(target);
 
-        foreach (string file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        try
         {
-            try
+            foreach (string file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
             {
-                string relative = Path.GetRelativePath(source, file);
-                string output = Path.Combine(target, relative);
-                Directory.CreateDirectory(Path.GetDirectoryName(output)!);
-                File.Copy(file, output, true);
+                try
+                {
+                    string relative = Path.GetRelativePath(source, file);
+                    string output = Path.Combine(target, relative);
+                    Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+                    File.Copy(file, output, true);
+                }
+                catch (Exception ex)
+                {
+                    warnings.Add(
+                        $"Could not copy {file}: {ex.Message}");
+                }
             }
-            catch
-            {
-            }
+        }
+        catch (Exception ex)
+        {
+            warnings.Add(
+                $"Could not enumerate {source}: {ex.Message}");
         }
     }
 

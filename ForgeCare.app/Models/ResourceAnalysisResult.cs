@@ -1,10 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Text.Json.Serialization;
 
 namespace ForgeCare.App.Models;
 
 public class ResourceAnalysisResult
 {
+    private IReadOnlyList<ProcessInstanceObservation> _processObservations =
+        Array.Empty<ProcessInstanceObservation>();
+
     public double CpuUsagePercent { get; set; }
 
     public double MemoryUsedPercent { get; set; }
@@ -37,6 +42,14 @@ public class ResourceAnalysisResult
 
     public List<ResourceProcessInfo> TopProcesses { get; set; } =
         new();
+
+    [JsonIgnore]
+    public IReadOnlyList<ProcessInstanceObservation> ProcessObservations
+    {
+        get => _processObservations;
+        set => _processObservations = new ReadOnlyCollection<ProcessInstanceObservation>(
+            new List<ProcessInstanceObservation>(value ?? Array.Empty<ProcessInstanceObservation>()));
+    }
 
     public List<ResourceInsight> Insights { get; set; } =
         new();
