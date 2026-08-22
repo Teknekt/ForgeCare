@@ -535,11 +535,11 @@
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
                                     <TextBlock Text="SUBJECT" Foreground="#68717A" FontSize="9" Margin="0,2,0,7"/>
-                                    <TextBox Grid.Column="1" Text="{Binding RawSubject}" Style="{StaticResource ExplorerReadOnlyValueStyle}" Margin="0,0,0,7"/>
+                                    <TextBox Grid.Column="1" Text="{Binding RawSubject, Mode=OneWay}" Style="{StaticResource ExplorerReadOnlyValueStyle}" Margin="0,0,0,7"/>
                                     <TextBlock Grid.Row="1" Text="EVIDENCE ID" Foreground="#68717A" FontSize="9" Margin="0,2,0,7"/>
-                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Id}" Style="{StaticResource ExplorerReadOnlyValueStyle}" FontFamily="Consolas" Margin="0,0,0,7"/>
+                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Id, Mode=OneWay}" Style="{StaticResource ExplorerReadOnlyValueStyle}" FontFamily="Consolas" Margin="0,0,0,7"/>
                                     <TextBlock Grid.Row="2" Text="SESSION ID" Foreground="#68717A" FontSize="9" Margin="0,2,0,0"/>
-                                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SessionId}" Style="{StaticResource ExplorerReadOnlyValueStyle}" FontFamily="Consolas"/>
+                                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SessionId, Mode=OneWay}" Style="{StaticResource ExplorerReadOnlyValueStyle}" FontFamily="Consolas"/>
                                 </Grid>
 
                                 <Border Height="1" Background="#2A2F35" Margin="0,18"/>
@@ -557,7 +557,7 @@
                                     <StackPanel.Style>
                                         <Style TargetType="StackPanel">
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Value}" Value="{x:Null}">
+                                                <DataTrigger Binding="{Binding Value, Mode=OneWay}" Value="{x:Null}">
                                                     <Setter Property="Visibility" Value="Collapsed"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
@@ -585,7 +585,7 @@
                                     <TextBlock Text="SOURCE" Foreground="#68717A" FontSize="9" Margin="0,2,0,7"/>
                                     <TextBlock Grid.Column="1" Text="{Binding SourceDisplay}" Foreground="#CDD2D7" FontSize="12" Margin="0,0,0,7"/>
                                     <TextBlock Grid.Row="1" Text="COLLECTOR" Foreground="#68717A" FontSize="9" Margin="0,2,0,7"/>
-                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Collector}" Style="{StaticResource ExplorerReadOnlyValueStyle}" Margin="0,0,0,7"/>
+                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Collector, Mode=OneWay}" Style="{StaticResource ExplorerReadOnlyValueStyle}" Margin="0,0,0,7"/>
                                     <TextBlock Grid.Row="2" Text="TIMESTAMP" Foreground="#68717A" FontSize="9" Margin="0,2,0,0"/>
                                     <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding TimestampDisplay}" Foreground="#CDD2D7" FontSize="12"/>
                                 </Grid>
@@ -617,10 +617,10 @@
                                     <StackPanel.Style>
                                         <Style TargetType="StackPanel">
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding CorrelationKey}" Value="{x:Null}">
+                                                <DataTrigger Binding="{Binding CorrelationKey, Mode=OneWay}" Value="{x:Null}">
                                                     <Setter Property="Visibility" Value="Collapsed"/>
                                                 </DataTrigger>
-                                                <DataTrigger Binding="{Binding CorrelationKey}" Value="">
+                                                <DataTrigger Binding="{Binding CorrelationKey, Mode=OneWay}" Value="">
                                                     <Setter Property="Visibility" Value="Collapsed"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
@@ -628,7 +628,7 @@
                                     </StackPanel.Style>
                                     <Border Height="1" Background="#2A2F35" Margin="0,0,0,18"/>
                                     <TextBlock Text="CORRELATION" Style="{StaticResource ExplorerSectionLabelStyle}"/>
-                                    <TextBox Text="{Binding CorrelationKey}" Style="{StaticResource ExplorerReadOnlyValueStyle}" FontFamily="Consolas"/>
+                                    <TextBox Text="{Binding CorrelationKey, Mode=OneWay}" Style="{StaticResource ExplorerReadOnlyValueStyle}" FontFamily="Consolas"/>
                                 </StackPanel>
 
                                 <StackPanel Margin="0,18,0,0">
@@ -657,7 +657,7 @@
                                                                TextWrapping="Wrap"
                                                                ToolTip="{Binding RawKey}"/>
                                                     <TextBox Grid.Column="1"
-                                                             Text="{Binding Value}"
+                                                             Text="{Binding Value, Mode=OneWay}"
                                                              Style="{StaticResource ExplorerReadOnlyValueStyle}"/>
                                                 </Grid>
                                             </DataTemplate>
@@ -778,9 +778,9 @@
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560">
                     <TextBlock Text="UNSUPPORTED EVIDENCE SCHEMA" Foreground="#D8B27A" FontSize="20" FontWeight="SemiBold" TextAlignment="Center"/>
                     <TextBlock Foreground="{StaticResource ForgeMutedBrush}" FontSize="12" TextAlignment="Center" TextWrapping="Wrap" Margin="0,10,0,0">
-                        <Run Text="This Evidence document uses schema version "/><Run Text="{Binding UnsupportedSchemaVersion}"/><Run Text="."/>
+                        <Run Text="This Evidence document uses schema version "/><Run Text="{Binding UnsupportedSchemaVersion, Mode=OneWay}"/><Run Text="."/>
                         <LineBreak/>
-                        <Run Text="This ForgeCare build supports schema version "/><Run Text="{Binding SupportedSchemaVersion}"/><Run Text="."/>
+                        <Run Text="This ForgeCare build supports schema version "/><Run Text="{Binding SupportedSchemaVersion, Mode=OneWay}"/><Run Text="."/>
                     </TextBlock>
                 </StackPanel>
             </Border>
@@ -805,3 +805,6 @@
         </Grid>
     </Grid>
 </UserControl>
+
+
+
