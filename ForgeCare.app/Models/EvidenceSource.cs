@@ -10,6 +10,7 @@ public enum EvidenceSource
     StorageAnalyzer,
     StartupAnalyzer,
     StartupIntelligence,
+    ProcessIntelligence,
     Workflow,
     Safety,
     Manual,
