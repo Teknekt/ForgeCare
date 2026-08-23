@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using ForgeCare.App.Models;
 
@@ -36,13 +37,19 @@ public sealed class ForgeReportService
     private ForgeReportSession _session;
 
     private ForgeReportService()
+        : this(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "ForgeCare",
+            "Reports"))
     {
-        _reportDirectory =
-            Path.Combine(
-                Environment.GetFolderPath(
-                    Environment.SpecialFolder.LocalApplicationData),
-                "ForgeCare",
-                "Reports");
+    }
+
+    internal ForgeReportService(string reportDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(reportDirectory))
+            throw new ArgumentException("Report directory must not be empty.", nameof(reportDirectory));
+
+        _reportDirectory = Path.GetFullPath(reportDirectory);
 
         _sessionFile =
             Path.Combine(
@@ -312,6 +319,116 @@ public sealed class ForgeReportService
         }
     }
 
+    public bool RecordStartupActionReceipt(StartupActionReceipt receipt)
+    {
+        ArgumentNullException.ThrowIfNull(receipt);
+        lock (_sync)
+        {
+            if (!string.Equals(receipt.SessionId, _session.SessionId, StringComparison.Ordinal))
+                throw new InvalidOperationException("Startup receipt does not belong to the active report session.");
+
+            StartupActionReceipt? existing = _session.StartupActionReceipts
+                .FirstOrDefault(candidate => string.Equals(
+                    candidate.ReceiptId, receipt.ReceiptId, StringComparison.Ordinal));
+            if (existing != null)
+            {
+                if (Equivalent(existing, receipt))
+                    return false;
+                throw new InvalidOperationException("A different startup receipt already uses this receipt ID.");
+            }
+
+            _session.StartupActionReceipts.Add(receipt);
+            TouchAndSave();
+            return true;
+        }
+    }
+
+    public bool RecordStartupVerificationResult(StartupVerificationResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        lock (_sync)
+        {
+            StartupActionReceipt? receipt = _session.StartupActionReceipts
+                .FirstOrDefault(candidate => string.Equals(
+                    candidate.ReceiptId, result.ReceiptId, StringComparison.Ordinal));
+            if (receipt == null ||
+                !receipt.Items.Any(item => string.Equals(
+                    item.TargetIdentity.TargetId, result.TargetId, StringComparison.Ordinal)))
+            {
+                throw new InvalidOperationException(
+                    "Startup verification result does not reference an active-session receipt target.");
+            }
+
+            StartupVerificationResult? existing = _session.StartupVerificationResults
+                .FirstOrDefault(candidate => SameVerificationIdentity(candidate, result));
+            if (existing != null)
+            {
+                if (Equivalent(existing, result))
+                    return false;
+                throw new InvalidOperationException(
+                    "A different startup verification result already uses this result identity.");
+            }
+
+            _session.StartupVerificationResults.Add(result);
+            TouchAndSave();
+            return true;
+        }
+    }
+
+    public IReadOnlyList<StartupActionReceipt> GetStartupActionReceipts() =>
+        Snapshot().StartupActionReceipts.AsReadOnly();
+
+    public IReadOnlyList<StartupVerificationResult> GetStartupVerificationResults() =>
+        Snapshot().StartupVerificationResults.AsReadOnly();
+
+    public IReadOnlyList<StartupActionReceipt> GetPendingStartupActionReceipts()
+    {
+        ForgeReportSession session = Snapshot();
+        var terminalTargets = session.StartupVerificationResults
+            .Where(result => result.Status is StartupVerificationStatus.Verified or
+                StartupVerificationStatus.ExpectedOutcomeNotObserved or
+                StartupVerificationStatus.NotEligible)
+            .Select(result => (result.ReceiptId, result.TargetId))
+            .ToHashSet();
+
+        var pending = new List<StartupActionReceipt>();
+        foreach (StartupActionReceipt receipt in session.StartupActionReceipts)
+        {
+            StartupActionReceiptItem[] items = receipt.Items
+                .Where(item =>
+                    item.IsVerificationEligible &&
+                    !terminalTargets.Contains((receipt.ReceiptId, item.TargetIdentity.TargetId)) &&
+                    !IsSuperseded(receipt, item, session.StartupActionReceipts))
+                .ToArray();
+            if (items.Length == 0)
+                continue;
+
+            pending.Add(new StartupActionReceipt(
+                receipt.ReceiptId,
+                receipt.SessionId,
+                receipt.Operation,
+                receipt.ExecutedAtUtc,
+                items,
+                receipt.SupersedesReceiptId));
+        }
+
+        return pending.AsReadOnly();
+    }
+
+    private static bool IsSuperseded(
+        StartupActionReceipt receipt,
+        StartupActionReceiptItem item,
+        IEnumerable<StartupActionReceipt> receipts) =>
+        receipts.Any(candidate =>
+            candidate.ExecutedAtUtc > receipt.ExecutedAtUtc &&
+            candidate.Operation != receipt.Operation &&
+            candidate.Items.Any(candidateItem =>
+                candidateItem.IsVerificationEligible &&
+                string.Equals(
+                    candidateItem.TargetIdentity.LocatorId,
+                    item.TargetIdentity.LocatorId,
+                    StringComparison.Ordinal)));
+
     public void RecordStorageCleanup(
         StorageCleanupResult result,
         string title)
@@ -539,16 +656,148 @@ public sealed class ForgeReportService
                 File.ReadAllText(
                     _sessionFile);
 
-            return JsonSerializer.Deserialize<
-                ForgeReportSession>(
-                    json,
-                    _jsonOptions);
+            return DeserializeSession(json);
         }
         catch
         {
             return null;
         }
     }
+
+    private ForgeReportSession? DeserializeSession(string json)
+    {
+        JsonObject? root = JsonNode.Parse(json) as JsonObject;
+        if (root == null)
+            return null;
+
+        JsonNode? receiptNode = root["StartupActionReceipts"]?.DeepClone();
+        JsonNode? resultNode = root["StartupVerificationResults"]?.DeepClone();
+        root.Remove("StartupActionReceipts");
+        root.Remove("StartupVerificationResults");
+
+        ForgeReportSession? session = root.Deserialize<ForgeReportSession>(_jsonOptions);
+        if (session == null)
+            return null;
+
+        session.StartupActionReceipts = LoadValidReceipts(receiptNode, session.SessionId);
+        session.StartupVerificationResults = LoadValidResults(
+            resultNode,
+            session.StartupActionReceipts);
+        return session;
+    }
+
+    private List<StartupActionReceipt> LoadValidReceipts(JsonNode? node, string sessionId)
+    {
+        var receipts = new List<StartupActionReceipt>();
+        var conflictedIds = new HashSet<string>(StringComparer.Ordinal);
+        if (node is not JsonArray array)
+            return receipts;
+
+        foreach (JsonNode? item in array)
+        {
+            try
+            {
+                StartupActionReceipt? receipt = item?.Deserialize<StartupActionReceipt>(_jsonOptions);
+                if (receipt == null || !Valid(receipt) ||
+                    !string.Equals(receipt.SessionId, sessionId, StringComparison.Ordinal) ||
+                    conflictedIds.Contains(receipt.ReceiptId))
+                    continue;
+                StartupActionReceipt? existing = receipts.FirstOrDefault(candidate =>
+                    string.Equals(candidate.ReceiptId, receipt.ReceiptId, StringComparison.Ordinal));
+                if (existing == null)
+                    receipts.Add(receipt);
+                else if (!Equivalent(existing, receipt))
+                {
+                    receipts.Remove(existing);
+                    conflictedIds.Add(receipt.ReceiptId);
+                }
+            }
+            catch
+            {
+                // Optional malformed Sprint 25 records must not invalidate legacy report state.
+            }
+        }
+
+        return receipts;
+    }
+
+    private List<StartupVerificationResult> LoadValidResults(
+        JsonNode? node,
+        IReadOnlyList<StartupActionReceipt> receipts)
+    {
+        var results = new List<StartupVerificationResult>();
+        var conflictedIds = new HashSet<string>(StringComparer.Ordinal);
+        if (node is not JsonArray array)
+            return results;
+
+        foreach (JsonNode? item in array)
+        {
+            try
+            {
+                StartupVerificationResult? result = item?.Deserialize<StartupVerificationResult>(_jsonOptions);
+                string resultIdentity = result == null
+                    ? string.Empty
+                    : VerificationIdentity(result);
+                if (result == null || !Valid(result) ||
+                    conflictedIds.Contains(resultIdentity) ||
+                    !receipts.Any(receipt =>
+                        string.Equals(receipt.ReceiptId, result.ReceiptId, StringComparison.Ordinal) &&
+                        receipt.Items.Any(receiptItem => string.Equals(
+                            receiptItem.TargetIdentity.TargetId, result.TargetId, StringComparison.Ordinal))))
+                    continue;
+                StartupVerificationResult? existing = results.FirstOrDefault(candidate =>
+                    SameVerificationIdentity(candidate, result));
+                if (existing == null)
+                    results.Add(result);
+                else if (!Equivalent(existing, result))
+                {
+                    results.Remove(existing);
+                    conflictedIds.Add(resultIdentity);
+                }
+            }
+            catch
+            {
+                // Optional malformed Sprint 25 records must not create verification claims.
+            }
+        }
+
+        return results;
+    }
+
+    private static bool Valid(StartupActionReceipt receipt) =>
+        Guid.TryParseExact(receipt.ReceiptId, "N", out _) &&
+        Guid.TryParseExact(receipt.SessionId, "N", out _) &&
+        receipt.ExecutedAtUtc.Kind == DateTimeKind.Utc &&
+        Enum.IsDefined(receipt.Operation) &&
+        receipt.Items.Count > 0 &&
+        receipt.Items.All(item =>
+            item != null &&
+            Enum.IsDefined(item.ExecutionOutcome) &&
+            Enum.IsDefined(item.ExpectedState.Kind) &&
+            Enum.IsDefined(item.TargetIdentity.Kind));
+
+    private static bool Valid(StartupVerificationResult result) =>
+        Guid.TryParseExact(result.ReceiptId, "N", out _) &&
+        !string.IsNullOrWhiteSpace(result.TargetId) &&
+        Enum.IsDefined(result.Status) &&
+        result.EvaluatedAtUtc.Kind == DateTimeKind.Utc &&
+        result.ObservationTimestampUtc.Kind == DateTimeKind.Utc;
+
+    private static bool SameVerificationIdentity(
+        StartupVerificationResult left,
+        StartupVerificationResult right) =>
+        string.Equals(left.ReceiptId, right.ReceiptId, StringComparison.Ordinal) &&
+        string.Equals(left.TargetId, right.TargetId, StringComparison.Ordinal) &&
+        left.ObservationTimestampUtc == right.ObservationTimestampUtc;
+
+    private static string VerificationIdentity(StartupVerificationResult result) =>
+        $"{result.ReceiptId}|{result.TargetId}|{result.ObservationTimestampUtc:O}";
+
+    private bool Equivalent<T>(T left, T right) =>
+        string.Equals(
+            JsonSerializer.Serialize(left, _jsonOptions),
+            JsonSerializer.Serialize(right, _jsonOptions),
+            StringComparison.Ordinal);
 
     private void TouchAndSave()
     {

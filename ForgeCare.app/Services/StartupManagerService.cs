@@ -306,6 +306,7 @@ public class StartupManagerService
 
         var record = new StartupUndoRecord
         {
+            Id = Guid.NewGuid().ToString("N"),
             Name = item.Name,
             HandlerType = item.HandlerType,
             RegistryPath = item.RegistryPath,
@@ -334,6 +335,7 @@ public class StartupManagerService
 
         var record = new StartupUndoRecord
         {
+            Id = Guid.NewGuid().ToString("N"),
             Name = item.Name,
             HandlerType = item.HandlerType,
             OriginalFilePath = item.StartupFilePath,

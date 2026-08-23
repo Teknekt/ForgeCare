@@ -38,6 +38,9 @@ public class SystemScanner
                             systemRoot,
                             StringComparison.OrdinalIgnoreCase));
 
+            StartupScanResult startupScan =
+                _startupScanner.Scan();
+
             var snapshot =
                 new SystemSnapshot
                 {
@@ -74,7 +77,10 @@ public class SystemScanner
                             : 0,
 
                     StartupItems =
-                        _startupScanner.Scan(),
+                        startupScan.Items.ToList(),
+
+                    StartupSourceResults =
+                        startupScan.SourceResults.ToList(),
 
                     ScanTime =
                         DateTime.Now

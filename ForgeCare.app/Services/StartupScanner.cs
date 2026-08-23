@@ -9,49 +9,59 @@ namespace ForgeCare.App.Services;
 
 public class StartupScanner
 {
-    public List<StartupItem> Scan()
+    public StartupScanResult Scan()
     {
-        var items = new List<StartupItem>();
-
-        ScanRegistryKey(
+        StartupScanSourceResult currentUserRegistry = ScanRegistryKey(
             Registry.CurrentUser,
             @"Software\Microsoft\Windows\CurrentVersion\Run",
             "Current User Registry",
-            items);
+            StartupScanSourceKind.CurrentUserRegistry);
 
-        ScanRegistryKey(
+        StartupScanSourceResult localMachineRegistry = ScanRegistryKey(
             Registry.LocalMachine,
             @"Software\Microsoft\Windows\CurrentVersion\Run",
             "Local Machine Registry",
-            items);
+            StartupScanSourceKind.LocalMachineRegistry);
 
-        ScanStartupFolder(
+        StartupScanSourceResult userStartupFolder = ScanStartupFolder(
             Environment.GetFolderPath(
                 Environment.SpecialFolder.Startup),
             "User Startup Folder",
-            items);
+            StartupScanSourceKind.UserStartupFolder);
 
-        ScanStartupFolder(
+        StartupScanSourceResult commonStartupFolder = ScanStartupFolder(
             Environment.GetFolderPath(
                 Environment.SpecialFolder.CommonStartup),
             "Common Startup Folder",
-            items);
+            StartupScanSourceKind.CommonStartupFolder);
 
-        return items
+        StartupScanSourceResult[] sources =
+        {
+            currentUserRegistry,
+            localMachineRegistry,
+            userStartupFolder,
+            commonStartupFolder
+        };
+
+        List<StartupItem> items = sources
+            .SelectMany(source => source.Items)
             .GroupBy(item =>
                 $"{item.Name}|{item.Command}",
                 StringComparer.OrdinalIgnoreCase)
             .Select(group => group.First())
             .OrderBy(item => item.Name)
             .ToList();
+
+        return new StartupScanResult(items, sources);
     }
 
-    private static void ScanRegistryKey(
+    private static StartupScanSourceResult ScanRegistryKey(
         RegistryKey root,
         string path,
         string source,
-        List<StartupItem> items)
+        StartupScanSourceKind sourceKind)
     {
+        var items = new List<StartupItem>();
         try
         {
             using RegistryKey? key =
@@ -59,7 +69,10 @@ public class StartupScanner
 
             if (key == null)
             {
-                return;
+                return new StartupScanSourceResult(
+                    sourceKind,
+                    StartupScanSourceStatus.Completed,
+                    items);
             }
 
             foreach (string valueName in key.GetValueNames())
@@ -79,24 +92,52 @@ public class StartupScanner
                     Source = source
                 });
             }
+
+            return new StartupScanSourceResult(
+                sourceKind,
+                StartupScanSourceStatus.Completed,
+                items);
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return new StartupScanSourceResult(
+                sourceKind,
+                StartupScanSourceStatus.Unavailable,
+                items);
         }
         catch
         {
             // Scanner must continue even if one source
             // cannot be read.
+            return new StartupScanSourceResult(
+                sourceKind,
+                StartupScanSourceStatus.Failed,
+                items);
         }
     }
 
-    private static void ScanStartupFolder(
+    private static StartupScanSourceResult ScanStartupFolder(
         string folderPath,
         string source,
-        List<StartupItem> items)
+        StartupScanSourceKind sourceKind)
     {
+        var items = new List<StartupItem>();
+        if (string.IsNullOrWhiteSpace(folderPath))
+        {
+            return new StartupScanSourceResult(
+                sourceKind,
+                StartupScanSourceStatus.Unavailable,
+                items);
+        }
+
         try
         {
             if (!Directory.Exists(folderPath))
             {
-                return;
+                return new StartupScanSourceResult(
+                    sourceKind,
+                    StartupScanSourceStatus.Completed,
+                    items);
             }
 
             foreach (string file in
@@ -112,10 +153,26 @@ public class StartupScanner
                     Source = source
                 });
             }
+
+            return new StartupScanSourceResult(
+                sourceKind,
+                StartupScanSourceStatus.Completed,
+                items);
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return new StartupScanSourceResult(
+                sourceKind,
+                StartupScanSourceStatus.Unavailable,
+                items);
         }
         catch
         {
             // Ignore inaccessible startup folders.
+            return new StartupScanSourceResult(
+                sourceKind,
+                StartupScanSourceStatus.Failed,
+                items);
         }
     }
 }
