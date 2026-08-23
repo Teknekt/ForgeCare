@@ -46,6 +46,7 @@ public partial class MainWindow : Window
     private readonly StabilityRecoveryService _stabilityRecoveryService;
     private readonly UxStateService _uxStateService;
     private readonly RegressionSuiteService _regressionSuiteService;
+    private readonly IEvidenceRepository _evidenceRepository;
     private readonly EvidenceService _evidenceService;
     private readonly EvidenceExplorerViewModel _evidenceExplorerViewModel;
     private readonly SystemScanEvidenceAdapter _systemScanEvidenceAdapter;
@@ -54,6 +55,7 @@ public partial class MainWindow : Window
     private readonly StartupIntelligenceEvidenceAdapter _startupIntelligenceEvidenceAdapter;
     private readonly ProcessIntelligenceService _processIntelligenceService;
     private readonly ProcessIntelligenceEvidenceAdapter _processIntelligenceEvidenceAdapter;
+    private readonly ForgePlanAttentionLiveService _forgePlanAttentionLiveService;
     private SecureUpdateDownloadResult? _lastSecureUpdateDownload;
     private RemoteUpdateCheckResult? _lastRemoteUpdateCheck;
     private RemoteUpdateSettings _remoteUpdateSettings = new();
@@ -71,6 +73,7 @@ public partial class MainWindow : Window
     private ServiceAnalysisResult? _latestServiceAnalysisResult;
     private OptimizationResult? _latestOptimizationResult;
     private ForgePlanResult? _latestForgePlanResult;
+    private ForgePlanAttentionBuildResult? _latestForgePlanAttentionResult;
     private ResourceAnalysisResult? _latestResourceAnalysisResult;
     private ForgeWorkflowSummary? _latestWorkflowSummary;
     private CancellationTokenSource? _duplicateScanCancellation;
@@ -167,6 +170,9 @@ public partial class MainWindow : Window
         var evidenceRepository =
             new JsonEvidenceRepository();
 
+        _evidenceRepository =
+            evidenceRepository;
+
         _evidenceService =
             new EvidenceService(
                 evidenceRepository);
@@ -212,6 +218,20 @@ public partial class MainWindow : Window
 
         _processIntelligenceEvidenceAdapter =
             new ProcessIntelligenceEvidenceAdapter();
+
+        var correlationEngine =
+            new EvidenceCorrelationEngine(
+                new IEvidenceCorrelationRule[]
+                {
+                    new StartupProcessAttentionRule(),
+                    new ProcessSystemCpuAttentionRule()
+                });
+
+        _forgePlanAttentionLiveService =
+            new ForgePlanAttentionLiveService(
+                _evidenceRepository,
+                correlationEngine,
+                new ForgePlanAttentionPresenter());
 
         Loaded +=
             MainWindow_Loaded;
@@ -576,7 +596,14 @@ public partial class MainWindow : Window
         _latestServiceAnalysisResult = null;
         _latestOptimizationResult = null;
         _latestForgePlanResult = null;
+        _latestForgePlanAttentionResult = null;
         _latestResourceAnalysisResult = null;
+
+        ForgePlanAttentionListView.ItemsSource = null;
+        ForgePlanAttentionStatusText.Text =
+            "Build Forge Plan to correlate current Evidence.";
+        ForgePlanAttentionWarningText.Visibility =
+            Visibility.Collapsed;
 
         UpdateReportUi();
         UpdateWorkflowUi();
@@ -1427,7 +1454,7 @@ public partial class MainWindow : Window
     // FORGE PLAN / ORCHESTRATION
     // ============================================================
 
-    private void BuildForgePlanButton_Click(
+    private async void BuildForgePlanButton_Click(
         object sender,
         RoutedEventArgs e)
     {
@@ -1472,6 +1499,90 @@ public partial class MainWindow : Window
             _latestForgePlanResult.Items.Any(item =>
                 item.IsSelected &&
                 item.CanExecute);
+
+        await BuildForgePlanAttentionAsync(
+            _forgeReportService.Snapshot().SessionId);
+    }
+
+    private async Task BuildForgePlanAttentionAsync(
+        string sessionId)
+    {
+        ForgePlanAttentionStatusText.Text =
+            "Correlating current-session Evidence…";
+        ForgePlanAttentionWarningText.Visibility =
+            Visibility.Collapsed;
+        BuildForgePlanButton.IsEnabled = false;
+
+        try
+        {
+            _latestForgePlanAttentionResult =
+                await _forgePlanAttentionLiveService.BuildAsync(sessionId);
+
+            ForgePlanAttentionListView.ItemsSource =
+                _latestForgePlanAttentionResult.Items;
+
+            ForgePlanAttentionWarningText.Visibility =
+                _latestForgePlanAttentionResult.State ==
+                    ForgePlanAttentionBuildState.PartialSuccess
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+
+            ForgePlanAttentionStatusText.Text =
+                _latestForgePlanAttentionResult.State switch
+                {
+                    ForgePlanAttentionBuildState.Ready =>
+                        $"{_latestForgePlanAttentionResult.Items.Count} Evidence-derived attention item(s).",
+                    ForgePlanAttentionBuildState.PartialSuccess =>
+                        $"{_latestForgePlanAttentionResult.Items.Count} attention item(s) available with a partial correlation result.",
+                    ForgePlanAttentionBuildState.Empty =>
+                        "No current multi-source Evidence correlations require technician review.",
+                    _ =>
+                        "Attention could not be built. Legacy Forge Plan actions remain available."
+                };
+        }
+        finally
+        {
+            BuildForgePlanButton.IsEnabled = true;
+        }
+    }
+
+    private async void ViewSupportingEvidenceButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement element ||
+            element.DataContext is not ForgePlanAttentionItem attention ||
+            attention.EvidenceIds.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            string sessionId =
+                _forgeReportService.Snapshot().SessionId;
+
+            if (!string.Equals(
+                    _evidenceExplorerViewModel.CurrentSessionId,
+                    sessionId,
+                    StringComparison.Ordinal) ||
+                !_evidenceExplorerViewModel.AllItems.Any(item =>
+                    item.Id == attention.EvidenceIds[0]))
+            {
+                await _evidenceExplorerViewModel.LoadSessionAsync(sessionId);
+            }
+
+            if (!_evidenceExplorerViewModel.SelectEvidence(attention.EvidenceIds[0]))
+                return;
+
+            SelectMainTab("EVIDENCE");
+        }
+        catch (Exception ex)
+        {
+            CrashLogService.Record(
+                ex,
+                "Forge Plan supporting Evidence navigation");
+        }
     }
 
     private void ForgePlanSelection_Click(

@@ -251,6 +251,26 @@ public sealed class EvidenceExplorerViewModel : INotifyPropertyChanged
 
     public void ClearSearch() => SearchQuery = string.Empty;
 
+    public bool SelectEvidence(Guid evidenceId)
+    {
+        if (evidenceId == Guid.Empty)
+            return false;
+
+        EvidenceExplorerItem? item =
+            AllItems.FirstOrDefault(value => value.Id == evidenceId);
+
+        if (item == null)
+            return false;
+
+        if (!VisibleItems.Any(value => value.Id == evidenceId))
+            ClearFilters();
+
+        SelectedItem =
+            VisibleItems.FirstOrDefault(value => value.Id == evidenceId);
+
+        return SelectedItem?.Id == evidenceId;
+    }
+
     public void ClearFilters()
     {
         bool changed = _selectedCategory != null || _selectedSource != null || _searchQuery.Length > 0;

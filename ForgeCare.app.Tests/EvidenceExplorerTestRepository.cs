@@ -11,6 +11,8 @@ internal sealed class EvidenceExplorerTestRepository : IEvidenceRepository
 
     public string? RequestedSessionId { get; private set; }
 
+    public int GetBySessionCalls { get; private set; }
+
     public int AddCalls { get; private set; }
 
     public int AddRangeCalls { get; private set; }
@@ -35,6 +37,7 @@ internal sealed class EvidenceExplorerTestRepository : IEvidenceRepository
         CancellationToken cancellationToken = default)
     {
         RequestedSessionId = sessionId;
+        GetBySessionCalls++;
         return ReadException == null
             ? Task.FromResult(Records)
             : Task.FromException<IReadOnlyList<EvidenceRecord>>(ReadException);
