@@ -11,6 +11,7 @@ namespace ForgeCare.App;
 public partial class StartupReviewWindow : Window
 {
     private readonly StartupManagerService _manager;
+    private readonly StartupReceiptIntegrationService _receiptIntegration;
     private readonly List<StartupChangeItem> _items;
     private bool _simulationPassed;
     private bool _executionCompleted;
@@ -19,6 +20,7 @@ public partial class StartupReviewWindow : Window
     {
         InitializeComponent();
         _manager = new StartupManagerService();
+        _receiptIntegration = new StartupReceiptIntegrationService();
         _items = _manager.BuildPlan(impactItems);
         StartupChangeListView.ItemsSource = _items;
         RefreshSummary();
@@ -169,6 +171,14 @@ public partial class StartupReviewWindow : Window
                 result,
                 isRestore: false);
 
+            _receiptIntegration.TryRecordDisable(
+                ForgeReportService.Instance.Snapshot().SessionId,
+                DateTime.UtcNow,
+                result,
+                selected,
+                _manager.GetUndoRecords(),
+                ForgeReportService.Instance.RecordStartupActionReceipt);
+
             _executionCompleted = true;
             StartupChangeListView.Items.Refresh();
 
@@ -221,9 +231,12 @@ public partial class StartupReviewWindow : Window
             ModeBadgeText.Text = "RESTORING";
             SafetyTitleText.Text = "RESTORING STARTUP STATE";
 
+            List<StartupUndoRecord> originalUndoRecords =
+                _manager.GetUndoRecords();
+
             SafetyJournalService.Instance.CaptureStartupSnapshot(
                 "Before startup restore",
-                _manager.GetUndoRecords());
+                originalUndoRecords);
 
             var result = await _manager.RestoreAllAsync();
 
@@ -239,6 +252,13 @@ public partial class StartupReviewWindow : Window
             ForgeReportService.Instance.RecordStartupChange(
                 result,
                 isRestore: true);
+
+            _receiptIntegration.TryRecordRestore(
+                ForgeReportService.Instance.Snapshot().SessionId,
+                DateTime.UtcNow,
+                result,
+                originalUndoRecords,
+                ForgeReportService.Instance.RecordStartupActionReceipt);
 
             SectionTitleText.Text = "RESTORE RESULTS";
             StartupChangeListView.ItemsSource = result.Items;

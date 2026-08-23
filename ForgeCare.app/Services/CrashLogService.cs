@@ -44,4 +44,28 @@ public static class CrashLogService
             // Logging must never cause a secondary crash.
         }
     }
+
+    public static void RecordPrivacySafe(Exception exception, string context)
+    {
+        try
+        {
+            lock (Sync)
+            {
+                Directory.CreateDirectory(DiagnosticsRoot);
+
+                var text = new StringBuilder();
+                text.AppendLine("============================================================");
+                text.AppendLine($"ForgeCare diagnostic issue · {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+                text.AppendLine($"Context: {context}");
+                text.AppendLine($"Failure type: {exception.GetType().Name}");
+                text.AppendLine();
+
+                File.AppendAllText(CrashLogPath, text.ToString(), Encoding.UTF8);
+            }
+        }
+        catch
+        {
+            // Logging must never cause a secondary crash.
+        }
+    }
 }

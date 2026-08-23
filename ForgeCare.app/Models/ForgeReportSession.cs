@@ -33,6 +33,12 @@ public class ForgeReportSession
     public List<ForgeReportAction> Actions { get; set; } =
         new();
 
+    public List<StartupActionReceipt> StartupActionReceipts { get; set; } =
+        new();
+
+    public List<StartupVerificationResult> StartupVerificationResults { get; set; } =
+        new();
+
     public ForgeReportCheckpoint? Before =>
         Checkpoints.FirstOrDefault();
 

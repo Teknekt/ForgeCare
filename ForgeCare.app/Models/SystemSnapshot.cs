@@ -21,5 +21,7 @@ public class SystemSnapshot
 
     public List<StartupItem> StartupItems { get; set; } = new();
 
+    public List<StartupScanSourceResult> StartupSourceResults { get; set; } = new();
+
     public DateTime ScanTime { get; set; }
 }

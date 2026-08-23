@@ -2,6 +2,8 @@
 
 public class StartupUndoRecord
 {
+    public string Id { get; set; } = string.Empty;
+
     public string Name { get; set; } = string.Empty;
     public string HandlerType { get; set; } = string.Empty;
 

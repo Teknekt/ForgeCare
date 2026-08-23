@@ -21,11 +21,24 @@ public class ForgeWorkflowService
             hasServiceAnalysis &&
             hasStorageAnalysis;
 
-        bool verified =
-            reportSession.Checkpoints.Count >= 2;
+        var relevantStartupTargets =
+            GetRelevantStartupTargets(reportSession).ToArray();
+        bool hasStartupWork = relevantStartupTargets.Length > 0;
+        bool startupVerificationComplete =
+            hasStartupWork && relevantStartupTargets.All(target =>
+                reportSession.StartupVerificationResults.Any(result =>
+                    string.Equals(result.ReceiptId, target.ReceiptId, StringComparison.Ordinal) &&
+                    string.Equals(result.TargetId, target.Item.TargetIdentity.TargetId, StringComparison.Ordinal) &&
+                    result.Status is StartupVerificationStatus.Verified or
+                        StartupVerificationStatus.ExpectedOutcomeNotObserved));
 
-        bool hasRecordedWork =
-            reportSession.Actions.Count > 1;
+        bool hasLegacyNonStartupWork = reportSession.Actions.Any(action =>
+            action.IsSuccess &&
+            action.Category is "CLEANUP" or "STORAGE CLEANUP");
+        bool hasRecordedWork = hasStartupWork || hasLegacyNonStartupWork;
+        bool verified = hasRecordedWork &&
+            (!hasStartupWork || startupVerificationComplete) &&
+            (!hasLegacyNonStartupWork || reportSession.Checkpoints.Count >= 2);
 
         return new List<ForgeWorkflowStep>
         {
@@ -120,7 +133,7 @@ public class ForgeWorkflowService
                     "Open selected Cleanup, Startup, Storage or Duplicate actions one at a time through their existing Review → Dry Run → Confirm flow.",
                 Status =
                     hasRecordedWork
-                        ? "IN PROGRESS"
+                        ? "COMPLETE"
                         : hasForgePlan
                             ? "NEXT"
                             : "LOCKED",
@@ -133,7 +146,7 @@ public class ForgeWorkflowService
                 Number = 7,
                 Title = "Verify the result",
                 Description =
-                    "When the service work is finished, run System Scan again to capture the CURRENT / AFTER checkpoint.",
+                    "Run System Scan after eligible work. Verification completes only when the later observation establishes a factual terminal result.",
                 Status =
                     verified
                         ? "COMPLETE"
@@ -158,6 +171,28 @@ public class ForgeWorkflowService
                 IsRequired = true
             }
         };
+    }
+
+    private static IEnumerable<(string ReceiptId, StartupActionReceiptItem Item)>
+        GetRelevantStartupTargets(ForgeReportSession session)
+    {
+        foreach (StartupActionReceipt receipt in session.StartupActionReceipts)
+        {
+            foreach (StartupActionReceiptItem item in receipt.Items.Where(item => item.IsVerificationEligible))
+            {
+                bool superseded = session.StartupActionReceipts.Any(candidate =>
+                    candidate.ExecutedAtUtc > receipt.ExecutedAtUtc &&
+                    candidate.Operation != receipt.Operation &&
+                    candidate.Items.Any(candidateItem =>
+                        candidateItem.IsVerificationEligible &&
+                        string.Equals(
+                            candidateItem.TargetIdentity.LocatorId,
+                            item.TargetIdentity.LocatorId,
+                            StringComparison.Ordinal)));
+                if (!superseded)
+                    yield return (receipt.ReceiptId, item);
+            }
+        }
     }
 
     public ForgeWorkflowSummary Summarize(List<ForgeWorkflowStep> steps)

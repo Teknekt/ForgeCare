@@ -56,6 +56,8 @@ public partial class MainWindow : Window
     private readonly ProcessIntelligenceService _processIntelligenceService;
     private readonly ProcessIntelligenceEvidenceAdapter _processIntelligenceEvidenceAdapter;
     private readonly ForgePlanAttentionLiveService _forgePlanAttentionLiveService;
+    private readonly StartupReceiptIntegrationService _startupReceiptIntegrationService;
+    private readonly StartupVerificationLiveService _startupVerificationLiveService;
     private SecureUpdateDownloadResult? _lastSecureUpdateDownload;
     private RemoteUpdateCheckResult? _lastRemoteUpdateCheck;
     private RemoteUpdateSettings _remoteUpdateSettings = new();
@@ -118,6 +120,13 @@ public partial class MainWindow : Window
 
         _forgeReportService =
             ForgeReportService.Instance;
+
+        _startupReceiptIntegrationService =
+            new StartupReceiptIntegrationService();
+
+        _startupVerificationLiveService =
+            new StartupVerificationLiveService(
+                _forgeReportService);
 
         _forgePlanService =
             new ForgePlanService();
@@ -308,9 +317,12 @@ public partial class MainWindow : Window
         {
             SafetyRestoreStartupButton.IsEnabled = false;
 
+            List<StartupUndoRecord> originalUndoRecords =
+                manager.GetUndoRecords();
+
             _safetyJournalService.CaptureStartupSnapshot(
                 "Before Safety Center startup restore",
-                manager.GetUndoRecords());
+                originalUndoRecords);
 
             var result = await manager.RestoreAllAsync();
 
@@ -324,6 +336,13 @@ public partial class MainWindow : Window
                 "NONE");
 
             _forgeReportService.RecordStartupChange(result, isRestore: true);
+
+            _startupReceiptIntegrationService.TryRecordRestore(
+                _forgeReportService.Snapshot().SessionId,
+                DateTime.UtcNow,
+                result,
+                originalUndoRecords,
+                _forgeReportService.RecordStartupActionReceipt);
             UpdateReportUi();
             UpdateWorkflowUi();
 
@@ -1848,6 +1867,11 @@ public partial class MainWindow : Window
 
             await CaptureStartupIntelligenceEvidenceAsync(
                 snapshot);
+
+            _startupVerificationLiveService.VerifyAfterSystemScan(
+                snapshot);
+
+            UpdateWorkflowUi();
         }
         catch (Exception ex)
         {
