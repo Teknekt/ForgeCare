@@ -77,7 +77,8 @@ public sealed class StartupIntelligenceLiveIntegrationTests
     }
 
     private static string ReadMainWindowSource() =>
-        File.ReadAllText(Path.Combine(FindRepositoryRoot(), "ForgeCare.app", "MainWindow.xaml.cs"));
+        File.ReadAllText(Path.Combine(FindRepositoryRoot(), "ForgeCare.app", "MainWindow.xaml.cs"))
+            .ReplaceLineEndings("\n");
 
     private static string ExtractMethod(string source, string methodName)
     {
