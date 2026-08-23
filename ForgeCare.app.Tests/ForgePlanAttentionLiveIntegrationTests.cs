@@ -75,7 +75,8 @@ public sealed class ForgePlanAttentionLiveIntegrationTests
     [TestMethod]
     public void MainWindowRegistersBothRulesAndUsesSharedRepository()
     {
-        string source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "ForgeCare.app", "MainWindow.xaml.cs"));
+        string source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "ForgeCare.app", "MainWindow.xaml.cs"))
+            .ReplaceLineEndings("\n");
 
         StringAssert.Contains(source, "new StartupProcessAttentionRule()");
         StringAssert.Contains(source, "new ProcessSystemCpuAttentionRule()");
