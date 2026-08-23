@@ -56,6 +56,7 @@ public partial class MainWindow : Window
     private readonly ProcessIntelligenceService _processIntelligenceService;
     private readonly ProcessIntelligenceEvidenceAdapter _processIntelligenceEvidenceAdapter;
     private readonly ForgePlanAttentionLiveService _forgePlanAttentionLiveService;
+    private readonly ForgeServiceReportLiveService _forgeServiceReportLiveService;
     private readonly StartupReceiptIntegrationService _startupReceiptIntegrationService;
     private readonly StartupVerificationLiveService _startupVerificationLiveService;
     private SecureUpdateDownloadResult? _lastSecureUpdateDownload;
@@ -241,6 +242,12 @@ public partial class MainWindow : Window
                 _evidenceRepository,
                 correlationEngine,
                 new ForgePlanAttentionPresenter());
+
+        _forgeServiceReportLiveService =
+            new ForgeServiceReportLiveService(
+                _evidenceRepository,
+                new ForgeServiceReportBuilder(),
+                new ForgeServiceReportHtmlRenderer());
 
         Loaded +=
             MainWindow_Loaded;
@@ -814,7 +821,7 @@ public partial class MainWindow : Window
                 true;
 
             ExportReportDirectButton.Content =
-                "EXPORT DIRECT TO DESKTOP";
+                "EXPORT LEGACY DIRECT TO DESKTOP";
         }
     }
 
@@ -960,8 +967,172 @@ public partial class MainWindow : Window
                 true;
 
             ExportReportButton.Content =
-                "EXPORT HTML REPORT";
+                "EXPORT LEGACY HTML REPORT";
         }
+    }
+
+    private async void ExportProfessionalReportButton_Click(
+        object sender,
+        RoutedEventArgs e)
+    {
+        try
+        {
+            _forgeReportService.UpdateMetadata(
+                ReadReportMetadataFromUi());
+
+            ForgeReportSession session =
+                _forgeReportService.Snapshot();
+
+            if (!Guid.TryParseExact(session.SessionId, "N", out _))
+            {
+                ProfessionalReportStatusText.Text =
+                    "Professional report could not be generated. The current report session is invalid.";
+                return;
+            }
+
+            string sessionReference =
+                session.SessionId[..10].ToUpperInvariant();
+
+            var dialog = new SaveFileDialog
+            {
+                Title = "Export ForgeCare Professional Service Report",
+                Filter = "HTML Report (*.html)|*.html",
+                DefaultExt = ".html",
+                AddExtension = true,
+                OverwritePrompt = true,
+                FileName = $"ForgeCare-Service-Report-{sessionReference}-{DateTime.Now:yyyyMMdd-HHmmss}.html"
+            };
+
+            if (dialog.ShowDialog(this) != true)
+            {
+                ProfessionalReportStatusText.Text =
+                    "Professional report export cancelled.";
+                return;
+            }
+
+            ExportProfessionalReportButton.IsEnabled =
+                false;
+            ExportProfessionalReportButton.Content =
+                "GENERATING PROFESSIONAL REPORT...";
+            ProfessionalReportStatusText.Text =
+                "Loading current-session Evidence and building the professional report...";
+
+            ForgeServiceReportLiveResult result =
+                await _forgeServiceReportLiveService.GenerateAsync(session);
+
+            if (!result.Success || string.IsNullOrWhiteSpace(result.Html))
+            {
+                RecordProfessionalReportFailure(
+                    "generation",
+                    result.FailureType ?? result.Failure.ToString());
+                ProfessionalReportStatusText.Text =
+                    "Professional report could not be generated. The existing report session was not modified.";
+                MessageBox.Show(
+                    this,
+                    "Professional report could not be generated.\n\nThe existing report session was not modified.",
+                    "ForgeCare Professional Report",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                return;
+            }
+
+            if (result.EvidenceUnavailable)
+            {
+                RecordProfessionalReportFailure(
+                    "Evidence reference loading",
+                    "EvidenceUnavailable");
+            }
+
+            string exportPath =
+                Path.GetFullPath(dialog.FileName);
+            if (!string.Equals(Path.GetExtension(exportPath), ".html", StringComparison.OrdinalIgnoreCase))
+                exportPath = Path.ChangeExtension(exportPath, ".html");
+
+            await _forgeReportService.ExportProfessionalHtmlAsync(
+                exportPath,
+                result.Html,
+                session.SessionId);
+
+            var exportedFile = new FileInfo(exportPath);
+            if (!exportedFile.Exists || exportedFile.Length == 0)
+                throw new IOException("The professional report artifact could not be verified.");
+
+            _lastExportedReportPath =
+                exportPath;
+            LastReportPathText.Text =
+                exportPath;
+            OpenLastReportButton.IsEnabled =
+                true;
+            UpdateReportUi();
+
+            string completion = result.GeneratedWithDataNotes
+                ? "PROFESSIONAL REPORT GENERATED WITH DATA NOTES"
+                : "PROFESSIONAL REPORT GENERATED";
+            ProfessionalReportStatusText.Text =
+                completion;
+            ReportStatusText.Text =
+                completion;
+            ReportDetailsSavedText.Text =
+                result.GeneratedWithDataNotes
+                    ? "EXPORTED WITH DATA NOTES"
+                    : "PROFESSIONAL REPORT EXPORTED";
+            ReportDetailsSavedText.Foreground =
+                new SolidColorBrush(
+                    result.GeneratedWithDataNotes
+                        ? Color.FromRgb(225, 170, 60)
+                        : Color.FromRgb(110, 190, 140));
+
+            MessageBoxResult answer = MessageBox.Show(
+                this,
+                result.GeneratedWithDataNotes
+                    ? $"Professional service report generated with data notes.{Environment.NewLine}{Environment.NewLine}{exportPath}{Environment.NewLine}{Environment.NewLine}Open it now?"
+                    : $"Professional service report exported successfully.{Environment.NewLine}{Environment.NewLine}{exportPath}{Environment.NewLine}{Environment.NewLine}Open it now?",
+                "ForgeCare Professional Report",
+                MessageBoxButton.YesNo,
+                result.GeneratedWithDataNotes ? MessageBoxImage.Warning : MessageBoxImage.Information,
+                MessageBoxResult.Yes);
+
+            if (answer == MessageBoxResult.Yes)
+                OpenReportPath(exportPath);
+        }
+        catch (Exception exception)
+        {
+            RecordProfessionalReportFailure(
+                "export",
+                exception.GetType().Name);
+            ProfessionalReportStatusText.Text =
+                "Professional report could not be generated. The existing report session was not modified.";
+            ReportStatusText.Text =
+                "PROFESSIONAL REPORT EXPORT FAILED";
+            MessageBox.Show(
+                this,
+                "Professional report could not be generated.\n\nThe existing report session was not modified.",
+                "ForgeCare Professional Report",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        finally
+        {
+            ExportProfessionalReportButton.IsEnabled =
+                true;
+            ExportProfessionalReportButton.Content =
+                "EXPORT PROFESSIONAL SERVICE REPORT";
+        }
+    }
+
+    private static void RecordProfessionalReportFailure(
+        string stage,
+        string failureType)
+    {
+        string boundedType =
+            new(failureType
+                .Where(char.IsAsciiLetterOrDigit)
+                .Take(80)
+                .ToArray());
+        CrashLogService.Record(
+            new InvalidOperationException(
+                $"Professional report {stage} state: {boundedType}."),
+            "Professional service report");
     }
 
 
