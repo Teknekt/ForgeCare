@@ -140,6 +140,46 @@ public sealed class EvidenceExplorerViewModelTests
         Assert.IsFalse(typeof(EvidenceExplorerItem).GetProperties().Any(property => property.PropertyType == typeof(EvidenceRecord)));
     }
 
+    [TestMethod]
+    public async Task SelectEvidenceUsesCanonicalItemWithoutReloading()
+    {
+        string sessionId = Guid.NewGuid().ToString("N");
+        EvidenceRecord target = Create(sessionId, DateTime.UtcNow, EvidenceCategory.Memory);
+        var repository = new EvidenceExplorerTestRepository { Records = new[] { target } };
+        var viewModel = new EvidenceExplorerViewModel(repository, (_, _) => { });
+        await viewModel.LoadSessionAsync(sessionId);
+
+        bool selected = viewModel.SelectEvidence(target.Id);
+
+        Assert.IsTrue(selected);
+        Assert.AreSame(viewModel.VisibleItems.Single(), viewModel.SelectedItem);
+        Assert.AreEqual(1, repository.GetBySessionCalls);
+        Assert.AreEqual(0, repository.AddCalls);
+        Assert.AreEqual(0, repository.AddRangeCalls);
+    }
+
+    [TestMethod]
+    public async Task SelectEvidenceClearsIncompatibleFiltersAndMissingIdIsSafe()
+    {
+        string sessionId = Guid.NewGuid().ToString("N");
+        EvidenceRecord target = Create(sessionId, DateTime.UtcNow, EvidenceCategory.Memory);
+        EvidenceRecord cpu = Create(sessionId, DateTime.UtcNow.AddMinutes(1), EvidenceCategory.Cpu);
+        var repository = new EvidenceExplorerTestRepository { Records = new[] { target, cpu } };
+        var viewModel = new EvidenceExplorerViewModel(repository, (_, _) => { });
+        await viewModel.LoadSessionAsync(sessionId);
+        viewModel.SelectedCategory = EvidenceCategory.Cpu;
+        viewModel.SearchQuery = "cpu";
+
+        Assert.IsTrue(viewModel.SelectEvidence(target.Id));
+        Assert.IsNull(viewModel.SelectedCategory);
+        Assert.IsNull(viewModel.SelectedSource);
+        Assert.AreEqual(string.Empty, viewModel.SearchQuery);
+        Assert.AreEqual(target.Id, viewModel.SelectedId);
+        Assert.IsFalse(viewModel.SelectEvidence(Guid.NewGuid()));
+        Assert.IsFalse(viewModel.SelectEvidence(Guid.Empty));
+        Assert.AreEqual(1, repository.GetBySessionCalls);
+    }
+
     private static EvidenceRecord Create(
         string sessionId,
         DateTime timestamp,
