@@ -5610,16 +5610,48 @@
                                 <Separator Margin="0,20,0,16"
                                            Background="#292D32"/>
 
-                                <TextBlock Text="REPORT ACTIONS"
+                                <TextBlock Text="PROFESSIONAL SERVICE REPORT"
                                            Foreground="#C7A65B"
                                            FontSize="10"
                                            FontWeight="SemiBold"/>
 
-                                <TextBlock Text="Export the active Forge session as a standalone HTML report."
+                                <TextBlock Text="Generate a technician-facing report containing diagnostic context, typed startup actions, verification, Evidence references, unresolved items and final recorded state."
                                            Foreground="#747C85"
                                            FontSize="9"
                                            TextWrapping="Wrap"
                                            Margin="0,4,0,4"/>
+
+                                <Button x:Name="ExportProfessionalReportButton"
+                                        Content="EXPORT PROFESSIONAL SERVICE REPORT"
+                                        Height="48"
+                                        Margin="0,14,0,0"
+                                        Background="{StaticResource ForgeAccentBrush}"
+                                        Foreground="#101010"
+                                        BorderThickness="0"
+                                        FontWeight="Bold"
+                                        Click="ExportProfessionalReportButton_Click"/>
+
+                                <TextBlock x:Name="ProfessionalReportStatusText"
+                                           Text="Generated only when requested. Current-session Evidence is loaded once and remains read-only."
+                                           Foreground="#747C85"
+                                           FontSize="9"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center"
+                                           Margin="0,8,0,0"/>
+
+                                <Separator Margin="0,18,0,14"
+                                           Background="#292D32"/>
+
+                                <TextBlock Text="LEGACY REPORT"
+                                           Foreground="#8C949D"
+                                           FontSize="9"
+                                           FontWeight="SemiBold"/>
+
+                                <TextBlock Text="The existing v1.0 session report remains available during Reporting 2.0 acceptance."
+                                           Foreground="#646C75"
+                                           FontSize="9"
+                                           TextWrapping="Wrap"
+                                           Margin="0,4,0,0"/>
 
                                 <Button x:Name="RefreshReportButton"
                                         Content="REFRESH REPORT"
@@ -5633,18 +5665,19 @@
                                         Click="RefreshReportButton_Click"/>
 
                                 <Button x:Name="ExportReportButton"
-                                        Content="EXPORT HTML REPORT"
+                                        Content="EXPORT LEGACY HTML REPORT"
                                         Height="48"
                                         Margin="0,10,0,0"
-                                        Background="{StaticResource ForgeAccentBrush}"
-                                        Foreground="#101010"
-                                        BorderThickness="0"
+                                        Background="#25292E"
+                                        Foreground="White"
+                                        BorderBrush="#3A3F45"
+                                        BorderThickness="1"
                                         FontWeight="Bold"
                                         Click="ExportReportButton_Click"/>
 
 
                                 <Button x:Name="ExportReportDirectButton"
-                                        Content="EXPORT DIRECT TO DESKTOP"
+                                        Content="EXPORT LEGACY DIRECT TO DESKTOP"
                                         Height="42"
                                         Margin="0,8,0,0"
                                         Background="#1C2420"
@@ -6076,9 +6109,16 @@
                                                         <ColumnDefinition Width="90"/>
                                                     </Grid.ColumnDefinitions>
 
-                                                    <TextBlock Text="{Binding DisplayTime}"
-                                                               Foreground="#747C85"
-                                                               FontSize="9"/>
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding DisplayTime}"
+                                                                   Foreground="#747C85"
+                                                                   FontSize="9"/>
+                                                        <TextBlock Text="{Binding DisplayReportKind}"
+                                                                   Foreground="#C7A65B"
+                                                                   FontSize="8"
+                                                                   FontWeight="SemiBold"
+                                                                   Margin="0,3,0,0"/>
+                                                    </StackPanel>
 
                                                     <TextBlock Grid.Column="1"
                                                                Text="{Binding JobId}"

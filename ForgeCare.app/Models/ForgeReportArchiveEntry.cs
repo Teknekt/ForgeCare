@@ -4,6 +4,9 @@ namespace ForgeCare.App.Models;
 
 public class ForgeReportArchiveEntry
 {
+    public string ReportKind { get; set; } =
+        "Legacy";
+
     public DateTime ExportedAt { get; set; }
 
     public string JobId { get; set; } =
@@ -28,4 +31,9 @@ public class ForgeReportArchiveEntry
 
     public string DisplayTime =>
         ExportedAt.ToString("yyyy-MM-dd HH:mm");
+
+    public string DisplayReportKind =>
+        string.Equals(ReportKind, "Professional", StringComparison.OrdinalIgnoreCase)
+            ? "PROFESSIONAL"
+            : "LEGACY";
 }

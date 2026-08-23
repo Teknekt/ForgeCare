@@ -512,7 +512,8 @@ public sealed class ForgeReportService
 
     private void RecordExport(
         ForgeReportSession session,
-        string path)
+        string path,
+        string reportKind)
     {
         lock (_sync)
         {
@@ -522,6 +523,9 @@ public sealed class ForgeReportService
             archive.Add(
                 new ForgeReportArchiveEntry
                 {
+                    ReportKind =
+                        reportKind,
+
                     ExportedAt =
                         DateTime.Now,
 
@@ -589,6 +593,41 @@ public sealed class ForgeReportService
     public async Task ExportHtmlAsync(
         string path)
     {
+        ForgeReportSession snapshot = Snapshot();
+        string html = BuildHtml(snapshot);
+
+        await WriteHtmlAndRecordAsync(
+            path,
+            html,
+            snapshot,
+            "Legacy");
+    }
+
+    internal async Task ExportProfessionalHtmlAsync(
+        string path,
+        string html,
+        string expectedSessionId)
+    {
+        if (!Guid.TryParseExact(expectedSessionId, "N", out _))
+            throw new InvalidOperationException("The professional report session identity is invalid.");
+
+        ForgeReportSession snapshot = Snapshot();
+        if (!string.Equals(snapshot.SessionId, expectedSessionId, StringComparison.Ordinal))
+            throw new InvalidOperationException("The active report session changed before export completed.");
+
+        await WriteHtmlAndRecordAsync(
+            path,
+            html,
+            snapshot,
+            "Professional");
+    }
+
+    private async Task WriteHtmlAndRecordAsync(
+        string path,
+        string html,
+        ForgeReportSession snapshot,
+        string reportKind)
+    {
         if (string.IsNullOrWhiteSpace(path))
             throw new ArgumentException("No export path was supplied.", nameof(path));
 
@@ -596,9 +635,6 @@ public sealed class ForgeReportService
 
         if (!string.Equals(Path.GetExtension(fullPath), ".html", StringComparison.OrdinalIgnoreCase))
             fullPath = Path.ChangeExtension(fullPath, ".html");
-
-        ForgeReportSession snapshot = Snapshot();
-        string html = BuildHtml(snapshot);
 
         if (string.IsNullOrWhiteSpace(html))
             throw new InvalidOperationException("ForgeCare generated an empty HTML report.");
@@ -618,7 +654,7 @@ public sealed class ForgeReportService
         if (!exportedFile.Exists || exportedFile.Length == 0)
             throw new IOException($"ForgeCare could not verify the exported report at:{Environment.NewLine}{fullPath}");
 
-        RecordExport(snapshot, fullPath);
+        RecordExport(snapshot, fullPath, reportKind);
     }
 
     private static ForgeReportSession CreateSession()
