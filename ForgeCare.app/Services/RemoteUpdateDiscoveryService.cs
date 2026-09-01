@@ -15,21 +15,24 @@ public sealed class RemoteUpdateDiscoveryService
 
     private readonly HttpClient _httpClient;
 
-    public RemoteUpdateDiscoveryService()
+    public RemoteUpdateDiscoveryService(HttpClient? httpClient = null)
     {
-        _httpClient =
+        _httpClient = httpClient ??
             new HttpClient
             {
                 Timeout =
                     TimeSpan.FromSeconds(8)
             };
 
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
-            "ForgeCare-Technician-Edition/UpdateDiscovery");
+        if (!_httpClient.DefaultRequestHeaders.UserAgent.Any())
+        {
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "ForgeCare-Technician-Edition/UpdateDiscovery");
+        }
     }
 
     public async Task<RemoteUpdateCheckResult> CheckAsync(
-        string manifestUrl,
+        string? manifestUrl,
         string expectedChannel,
         CancellationToken cancellationToken = default)
     {
@@ -43,7 +46,7 @@ public sealed class RemoteUpdateDiscoveryService
         {
             return Invalid(
                 current,
-                manifestUrl,
+                string.Empty,
                 "INVALID URL",
                 "Enter an absolute HTTPS URL to a ForgeCare release-manifest.json file.");
         }
@@ -55,10 +58,12 @@ public sealed class RemoteUpdateDiscoveryService
         {
             return Invalid(
                 current,
-                manifestUrl,
+                uri.GetLeftPart(UriPartial.Path),
                 "HTTPS REQUIRED",
                 "Remote update discovery only accepts HTTPS manifest URLs.");
         }
+
+        string safeManifestUrl = uri.GetLeftPart(UriPartial.Path);
 
         try
         {
@@ -72,9 +77,9 @@ public sealed class RemoteUpdateDiscoveryService
             {
                 return Invalid(
                     current,
-                    manifestUrl,
+                    safeManifestUrl,
                     "CHECK FAILED",
-                    $"Manifest request returned HTTP {(int)response.StatusCode} {response.ReasonPhrase}.");
+                    $"Manifest request returned HTTP {(int)response.StatusCode}.");
             }
 
             string json =
@@ -93,7 +98,7 @@ public sealed class RemoteUpdateDiscoveryService
             {
                 return Invalid(
                     current,
-                    manifestUrl,
+                    safeManifestUrl,
                     "INVALID MANIFEST",
                     "The remote manifest was empty.");
             }
@@ -105,7 +110,7 @@ public sealed class RemoteUpdateDiscoveryService
             {
                 return Invalid(
                     current,
-                    manifestUrl,
+                    safeManifestUrl,
                     "INVALID MANIFEST",
                     "Remote manifest product is not ForgeCare.");
             }
@@ -117,20 +122,36 @@ public sealed class RemoteUpdateDiscoveryService
             {
                 return Invalid(
                     current,
-                    manifestUrl,
+                    safeManifestUrl,
                     "INVALID MANIFEST",
                     "Remote manifest AppId does not match this ForgeCare product identity.");
             }
 
             string channel =
-                string.IsNullOrWhiteSpace(manifest.Channel)
-                    ? "unknown"
-                    : manifest.Channel.Trim();
+                NormalizeChannel(manifest.Channel);
+            string requestedChannel =
+                string.IsNullOrWhiteSpace(expectedChannel)
+                    ? string.Empty
+                    : NormalizeChannel(expectedChannel);
 
-            if (!string.IsNullOrWhiteSpace(expectedChannel) &&
+            if (!TryVersion(
+                    current,
+                    out Version installed) ||
+                !TryVersion(
+                    manifest.Version,
+                    out Version available))
+            {
+                return Invalid(
+                    current,
+                    safeManifestUrl,
+                    "INVALID MANIFEST",
+                    "Remote manifest version could not be compared safely.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(requestedChannel) &&
                 !string.Equals(
                     channel,
-                    expectedChannel.Trim(),
+                    requestedChannel,
                     StringComparison.OrdinalIgnoreCase))
             {
                 return new RemoteUpdateCheckResult
@@ -140,24 +161,10 @@ public sealed class RemoteUpdateDiscoveryService
                     Channel = channel,
                     State = "CHANNEL MISMATCH",
                     Detail =
-                        $"Manifest channel is '{channel}', while ForgeCare is configured for '{expectedChannel}'. No update action is offered.",
-                    ManifestUrl = manifestUrl,
+                        $"Manifest channel is '{channel}', while ForgeCare is configured for '{requestedChannel}'. No update action is offered.",
+                    ManifestUrl = safeManifestUrl,
                     CheckedAt = DateTime.Now
                 };
-            }
-
-            if (!TryVersion(
-                    current,
-                    out Version? installed) ||
-                !TryVersion(
-                    manifest.Version,
-                    out Version? available))
-            {
-                return Invalid(
-                    current,
-                    manifestUrl,
-                    "INVALID MANIFEST",
-                    "Remote manifest version could not be compared safely.");
             }
 
             int compare =
@@ -178,12 +185,12 @@ public sealed class RemoteUpdateDiscoveryService
 
                 Detail =
                     compare > 0
-                        ? $"ForgeCare {manifest.Version} is available on the {channel} channel. Sprint 14B performs discovery only; download and installation are not enabled."
+                        ? $"ForgeCare {manifest.Version} is available on the {channel} channel. Download and SHA-256 verification require an explicit technician action."
                         : compare == 0
                             ? "The remote manifest matches the running ForgeCare version."
                             : "The remote manifest describes an older ForgeCare build.",
 
-                ManifestUrl = manifestUrl,
+                ManifestUrl = safeManifestUrl,
                 CheckedAt = DateTime.Now,
                 UpdateAvailable = compare > 0,
                 InstallerFile = manifest.Installer?.File ?? string.Empty,
@@ -194,31 +201,33 @@ public sealed class RemoteUpdateDiscoveryService
         {
             return Invalid(
                 current,
-                manifestUrl,
+                safeManifestUrl,
                 "CHECK TIMEOUT",
                 "The remote manifest check timed out.");
         }
         catch (HttpRequestException ex)
         {
+            CrashLogService.RecordPrivacySafe(ex, "Remote update manifest request");
             return Invalid(
                 current,
-                manifestUrl,
+                safeManifestUrl,
                 "OFFLINE / CHECK FAILED",
-                ex.Message);
+                "ForgeCare could not reach the update manifest. Check connectivity and try again.");
         }
         catch (Exception ex)
         {
+            CrashLogService.RecordPrivacySafe(ex, "Remote update manifest validation");
             return Invalid(
                 current,
-                manifestUrl,
+                safeManifestUrl,
                 "CHECK FAILED",
-                ex.Message);
+                "ForgeCare could not validate the remote update manifest.");
         }
     }
 
     private static RemoteUpdateCheckResult Invalid(
         string currentVersion,
-        string manifestUrl,
+        string? manifestUrl,
         string state,
         string detail)
     {
@@ -245,7 +254,7 @@ public sealed class RemoteUpdateDiscoveryService
 
     private static bool TryVersion(
         string raw,
-        out Version? version)
+        out Version version)
     {
         string value =
             (raw ?? string.Empty)
@@ -258,9 +267,14 @@ public sealed class RemoteUpdateDiscoveryService
         if (dash >= 0)
             value = value[..dash];
 
-        return Version.TryParse(
-            value,
-            out version);
+        if (Version.TryParse(value, out Version? parsed) && parsed is not null)
+        {
+            version = parsed;
+            return true;
+        }
+
+        version = new Version(0, 0);
+        return false;
     }
 
     private static string NormalizeAppId(
@@ -269,5 +283,14 @@ public sealed class RemoteUpdateDiscoveryService
         return (value ?? string.Empty)
             .Trim()
             .Trim('{', '}');
+    }
+
+    private static string NormalizeChannel(string? value)
+    {
+        string channel = (value ?? string.Empty).Trim();
+        return channel.Length is > 0 and <= 20 &&
+            channel.All(character => char.IsLetterOrDigit(character) || character is '-' or '_')
+                ? channel
+                : "unknown";
     }
 }

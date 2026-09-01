@@ -4,7 +4,7 @@ setlocal
 echo.
 echo ==================================================
 echo  FORGECARE FIRST EXTERNAL MACHINE TEST KIT
-echo  v1.0.0
+echo  CONFIGURED BETA
 echo ==================================================
 echo.
 echo Builds the portable self-contained beta package.

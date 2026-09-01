@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <ForgeCareVersion>1.1.0-beta.1</ForgeCareVersion>
+    <ForgeCareNumericVersion>1.1.0.0</ForgeCareNumericVersion>
+    <ForgeCareReleaseChannel>beta</ForgeCareReleaseChannel>
+    <ForgeCarePortableFileName>ForgeCare-v1.1.0-beta.1-win-x64-portable.zip</ForgeCarePortableFileName>
+    <ForgeCareInstallerBaseName>ForgeCare-v1.1.0-beta.1-Setup</ForgeCareInstallerBaseName>
+  </PropertyGroup>
+</Project>

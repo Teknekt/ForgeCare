@@ -12,13 +12,16 @@ namespace ForgeCare.App.Services;
 public sealed class RegressionSuiteService
 {
     private readonly EvidenceInspectionService _evidenceInspectionService;
+    private readonly string _safetyRoot;
 
     public RegressionSuiteService(
-        EvidenceInspectionService? evidenceInspectionService = null)
+        EvidenceInspectionService? evidenceInspectionService = null,
+        string? safetyRoot = null)
     {
         _evidenceInspectionService =
             evidenceInspectionService ??
             new EvidenceInspectionService();
+        _safetyRoot = safetyRoot ?? SafetyJournalService.SafetyRoot;
     }
 
     public RegressionSuiteResult Run()
@@ -129,16 +132,17 @@ public sealed class RegressionSuiteService
             "Reports directory",
             reports);
 
-        string safety =
-            Path.Combine(
-                dataRoot,
-                "Safety");
+        TryDirectoryCheck(
+            suite,
+            "Reports",
+            "Professional report export root",
+            reports);
 
         TryDirectoryCheck(
             suite,
             "Safety",
             "Safety directory",
-            safety);
+            _safetyRoot);
 
         string diagnostics =
             CrashLogService.DiagnosticsRoot;
@@ -163,6 +167,24 @@ public sealed class RegressionSuiteService
         var identity =
             new ReleaseIdentityService()
                 .Inspect();
+
+        Check(
+            suite,
+            "Release",
+            "Active beta identity",
+            identity.Version.StartsWith("1.1.0-beta.", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(identity.Channel, "BETA", StringComparison.Ordinal),
+            $"ForgeCare {identity.Version} · {identity.Channel}");
+
+        Check(
+            suite,
+            "Support",
+            "Support source roots",
+            Path.IsPathFullyQualified(dataRoot) &&
+            Path.IsPathFullyQualified(_safetyRoot) &&
+            Path.IsPathFullyQualified(diagnostics) &&
+            Path.IsPathFullyQualified(reports),
+            "Settings, Reports, Safety, Evidence and Diagnostics roots resolved.");
 
         Check(
             suite,

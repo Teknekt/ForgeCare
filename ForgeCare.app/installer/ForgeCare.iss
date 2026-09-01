@@ -3,8 +3,15 @@
 ; Stable per-user installer identity. Newer builds with the same AppId upgrade in place.
 
 #define MyAppName "ForgeCare"
-#define MyAppVersion "1.0.0"
-#define MyNumericVersion "1.0.0.0"
+#ifndef MyAppVersion
+  #error MyAppVersion must be supplied by the ForgeCare release pipeline.
+#endif
+#ifndef MyNumericVersion
+  #error MyNumericVersion must be supplied by the ForgeCare release pipeline.
+#endif
+#ifndef MyOutputBaseFilename
+  #error MyOutputBaseFilename must be supplied by the ForgeCare release pipeline.
+#endif
 #define MyAppPublisher "Mindforge Studio"
 #define MyAppExeName "ForgeCare.exe"
 #define MyAppId "{{0F34D1F2-0B94-4F4F-A63D-F0A15E7D11C7}"
@@ -19,7 +26,7 @@ VersionInfoVersion={#MyNumericVersion}
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription=ForgeCare Technician Edition Setup
 VersionInfoProductName={#MyAppName}
-VersionInfoProductVersion={#MyAppVersion}
+VersionInfoProductVersion={#MyNumericVersion}
 
 DefaultDirName={localappdata}\Programs\ForgeCare
 DefaultGroupName=ForgeCare
@@ -27,7 +34,7 @@ PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 
 OutputDir=..\artifacts\installer
-OutputBaseFilename=ForgeCare-v1.0.0-Setup
+OutputBaseFilename={#MyOutputBaseFilename}
 
 SetupIconFile=..\Assets\Icons\ForgeCare.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}

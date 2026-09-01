@@ -3,7 +3,7 @@ setlocal
 
 echo.
 echo ==========================================
-echo  FORGECARE RELEASE FORGE - v0.0.24-alpha
+echo  FORGECARE PORTABLE BETA BUILD
 echo ==========================================
 echo.
 echo This launcher runs the LOCAL ForgeCare release script with

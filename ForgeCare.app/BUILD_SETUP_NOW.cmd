@@ -5,7 +5,7 @@ cd /d "%~dp0"
 
 echo.
 echo ============================================================
-echo   FORGECARE TECHNICIAN EDITION v1.0.0
+echo   FORGECARE TECHNICIAN EDITION - CONFIGURED BETA
 echo   FINAL SETUP BUILDER
 echo ============================================================
 echo.
@@ -104,7 +104,8 @@ if errorlevel 1 (
     exit /b 1
 )
 
-set "SETUP=artifacts\installer\ForgeCare-v1.0.0-Setup.exe"
+for /f "tokens=2 delims=^>^<" %%V in ('findstr /c:"<ForgeCareInstallerBaseName>" "ForgeCare.Release.props"') do set "INSTALLER_NAME=%%V"
+set "SETUP=artifacts\installer\%INSTALLER_NAME%.exe"
 
 if not exist "%SETUP%" (
     echo.
@@ -116,7 +117,7 @@ if not exist "%SETUP%" (
 
 echo [4/4] Calculating SHA-256...
 powershell.exe -NoLogo -NoProfile -Command ^
-  "$h=(Get-FileHash '%SETUP%' -Algorithm SHA256).Hash; Set-Content 'artifacts\installer\ForgeCare-v1.0.0-Setup.sha256.txt' $h; Write-Host ''; Write-Host 'SHA-256:' $h -ForegroundColor Green"
+  "$h=(Get-FileHash '%SETUP%' -Algorithm SHA256).Hash; Set-Content 'artifacts\installer\%INSTALLER_NAME%.sha256.txt' $h; Write-Host ''; Write-Host 'SHA-256:' $h -ForegroundColor Green"
 
 echo.
 echo ============================================================
@@ -127,7 +128,7 @@ echo Setup:
 echo   %CD%\%SETUP%
 echo.
 echo SHA-256:
-echo   %CD%\artifacts\installer\ForgeCare-v1.0.0-Setup.sha256.txt
+echo   %CD%\artifacts\installer\%INSTALLER_NAME%.sha256.txt
 echo.
 echo Opening installer output folder...
 start "" "artifacts\installer"

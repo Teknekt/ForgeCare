@@ -3,7 +3,7 @@ setlocal
 
 echo.
 echo ===============================================
-echo  FORGECARE RELEASE FORGE - v1.0.0
+echo  FORGECARE RELEASE FORGE - CONFIGURED BETA
 echo ===============================================
 echo.
 echo Builds portable + installer when Inno Setup 6 is available.

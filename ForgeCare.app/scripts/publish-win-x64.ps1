@@ -5,6 +5,11 @@ param(
 $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
+[xml]$ReleaseProps = Get-Content (Join-Path $ProjectRoot "ForgeCare.Release.props")
+$Version = [string]$ReleaseProps.Project.PropertyGroup.ForgeCareVersion
+$PortableFileName = [string]$ReleaseProps.Project.PropertyGroup.ForgeCarePortableFileName
+
+& (Join-Path $PSScriptRoot "Test-ReleaseIdentity.ps1") -ProjectRoot $ProjectRoot
 
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
     Write-Host "ERROR: dotnet CLI was not found in PATH." -ForegroundColor Red
@@ -16,11 +21,11 @@ Write-Host "dotnet: $((dotnet --version))" -ForegroundColor DarkGray
 $Project = Join-Path $ProjectRoot "ForgeCare.app.csproj"
 $Artifacts = Join-Path $ProjectRoot "artifacts"
 $PublishDir = Join-Path $Artifacts "ForgeCare-win-x64"
-$ZipPath = Join-Path $Artifacts "ForgeCare-v0.0.24-alpha-win-x64.zip"
+$ZipPath = Join-Path $Artifacts $PortableFileName
 
 Write-Host ""
 Write-Host "==========================================" -ForegroundColor DarkYellow
-Write-Host " FORGECARE RELEASE FORGE - v0.0.24-alpha" -ForegroundColor Yellow
+Write-Host " FORGECARE RELEASE FORGE - v$Version" -ForegroundColor Yellow
 Write-Host "==========================================" -ForegroundColor DarkYellow
 Write-Host ""
 
@@ -51,10 +56,10 @@ dotnet publish $Project `
 Write-Host "[4/4] Packaging portable release..." -ForegroundColor Cyan
 
 $Readme = @"
-ForgeCare v0.0.24-alpha
+ForgeCare v$Version
 Mindforge Studio
 
-Portable Windows x64 alpha build.
+Portable Windows x64 beta build.
 
 RUN:
   ForgeCare.exe
@@ -62,7 +67,7 @@ RUN:
 NOTES:
 - ForgeCare intentionally runs as the current user.
 - Operations that require additional Windows permissions must request them explicitly.
-- This is an alpha build. Test on non-critical systems before production use.
+- This is a beta build. Test on non-critical systems before production use.
 - Report/session data is stored locally by ForgeCare.
 "@
 
