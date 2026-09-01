@@ -15,9 +15,12 @@ public sealed class BetaFieldTestService
 {
     private readonly string _directory;
     private readonly string _sessionFile;
+    private readonly string _crashLogPath;
     private readonly JsonSerializerOptions _json = new() { WriteIndented = true };
 
-    public BetaFieldTestService(string? dataRoot = null)
+    public BetaFieldTestService(
+        string? dataRoot = null,
+        string? crashLogPath = null)
     {
         _directory = Path.Combine(
             dataRoot ??
@@ -27,6 +30,7 @@ public sealed class BetaFieldTestService
             "Beta");
 
         _sessionFile = Path.Combine(_directory, "field-test-session.json");
+        _crashLogPath = crashLogPath ?? CrashLogService.CrashLogPath;
     }
 
     public BetaFieldTestSession StartNew(string testerName)
@@ -41,7 +45,7 @@ public sealed class BetaFieldTestService
         {
             StartedAt = DateTime.Now,
             BuildVersion = version,
-            ComputerName = Environment.MachineName,
+            ComputerName = "Not collected",
             WindowsDescription = RuntimeInformation.OSDescription,
             Architecture = $"{RuntimeInformation.ProcessArchitecture} / {RuntimeInformation.OSArchitecture}",
             TesterName = testerName,
@@ -116,13 +120,10 @@ public sealed class BetaFieldTestService
             diagnostics.GetEnvironmentSummary(),
             Encoding.UTF8);
 
-        if (File.Exists(CrashLogService.CrashLogPath))
-        {
-            File.Copy(
-                CrashLogService.CrashLogPath,
-                Path.Combine(root, "crash.log"),
-                true);
-        }
+        ProjectCrashLogIfExists(
+            _crashLogPath,
+            Path.Combine(root, "crash.log"),
+            Path.Combine(root, "issue-package-warnings.txt"));
 
         BetaFieldTestSession? session = Load();
         if (session != null)
@@ -144,6 +145,35 @@ public sealed class BetaFieldTestService
 
         Directory.Delete(root, true);
         return destinationZip;
+    }
+
+    private static void ProjectCrashLogIfExists(
+        string source,
+        string target,
+        string warningPath)
+    {
+        try
+        {
+            if (File.Exists(source))
+                CrashLogBundleProjector.Project(source, target);
+        }
+        catch
+        {
+            try
+            {
+                if (File.Exists(target))
+                    File.Delete(target);
+            }
+            catch
+            {
+            }
+
+            File.WriteAllText(
+                warningPath,
+                "Crash diagnostics unavailable: SanitizationFailed" +
+                Environment.NewLine,
+                Encoding.UTF8);
+        }
     }
 
     private static List<BetaFieldTestStep> CreateDefaultSteps()

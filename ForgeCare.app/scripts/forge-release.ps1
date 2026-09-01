@@ -4,18 +4,26 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$Version = "1.0.0"
-$NumericVersion = "1.0.0.0"
-$Channel = "stable"
-
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $Project = Join-Path $ProjectRoot "ForgeCare.app.csproj"
+$ReleasePropsPath = Join-Path $ProjectRoot "ForgeCare.Release.props"
+$IdentityCheck = Join-Path $PSScriptRoot "Test-ReleaseIdentity.ps1"
+
+& $IdentityCheck -ProjectRoot $ProjectRoot
+
+[xml]$ReleaseProps = Get-Content $ReleasePropsPath
+$ReleaseIdentity = $ReleaseProps.Project.PropertyGroup
+$Version = [string]$ReleaseIdentity.ForgeCareVersion
+$NumericVersion = [string]$ReleaseIdentity.ForgeCareNumericVersion
+$Channel = [string]$ReleaseIdentity.ForgeCareReleaseChannel
+$PortableFileName = [string]$ReleaseIdentity.ForgeCarePortableFileName
+$InstallerBaseName = [string]$ReleaseIdentity.ForgeCareInstallerBaseName
 
 $Artifacts = Join-Path $ProjectRoot "artifacts"
 $PublishDir = Join-Path $Artifacts "publish\win-x64"
 $InstallerDir = Join-Path $Artifacts "installer"
-$PortableZip = Join-Path $Artifacts "ForgeCare-v$Version-win-x64-portable.zip"
-$InstallerOutput = Join-Path $InstallerDir "ForgeCare-v$Version-Setup.exe"
+$PortableZip = Join-Path $Artifacts $PortableFileName
+$InstallerOutput = Join-Path $InstallerDir "$InstallerBaseName.exe"
 $InstallerScript = Join-Path $ProjectRoot "installer\ForgeCare.iss"
 $ManifestPath = Join-Path $Artifacts "release-manifest.json"
 
@@ -28,6 +36,15 @@ Write-Host ""
 
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
     throw "dotnet CLI was not found. Install the .NET 10 SDK, then retry."
+}
+
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    throw "git was not found. Exact source commit metadata is required for beta packaging."
+}
+
+$SourceCommit = (& git -C $ProjectRoot rev-parse HEAD).Trim()
+if ($LASTEXITCODE -ne 0 -or $SourceCommit -notmatch '^[0-9a-fA-F]{40}$') {
+    throw "Could not resolve the exact Git source commit for beta packaging."
 }
 
 Write-Host "dotnet SDK: $(dotnet --version)" -ForegroundColor DarkGray
@@ -73,12 +90,13 @@ DISTRIBUTION
 - Installer: per-user installation under LocalAppData\Programs\ForgeCare.
 - A newer installer with the same ForgeCare AppId upgrades the installed build in place.
 - ForgeCare operational/user data is kept under LocalAppData\ForgeCare and is not removed by app uninstall.
+- This controlled beta is unsigned. Verify artifact SHA-256 values before use.
 
 IMPORTANT
 - ForgeCare runs as the current Windows user by default.
 - It does not silently elevate permissions.
-- This is ForgeCare Technician Edition v1.0. Use technician judgement before system-changing actions.
-- Update checks are not network-enabled yet; beta updates are manual.
+- This is ForgeCare Technician Edition v$Version. Use technician judgement before system-changing actions.
+- Update discovery, secure download and hash verification are available when configured; installer handoff remains technician-controlled.
 "@
 
 Set-Content `
@@ -94,9 +112,12 @@ $ReleaseInfo = [ordered]@{
     numericVersion = $NumericVersion
     channel = $Channel
     runtime = "win-x64"
+    target = "windows-11-x64"
     selfContained = $true
+    signed = $false
+    sourceCommit = $SourceCommit
     installScope = "per-user"
-    updateMode = "manual-stable"
+    updateMode = "technician-controlled-beta"
     stableInstallerAppId = "{0F34D1F2-0B94-4F4F-A63D-F0A15E7D11C7}"
     localDataRoot = "%LOCALAPPDATA%\ForgeCare"
     generatedAt = (Get-Date).ToString("o")
@@ -149,7 +170,11 @@ else {
 else {
     $ISCC = $InnoCandidates[0]
     Write-Host "Inno Setup: $ISCC" -ForegroundColor DarkGray
-    & $ISCC $InstallerScript
+    & $ISCC `
+        "/DMyAppVersion=$Version" `
+        "/DMyNumericVersion=$NumericVersion" `
+        "/DMyOutputBaseFilename=$InstallerBaseName" `
+        $InstallerScript
 
     if ($LASTEXITCODE -ne 0) {
         throw "Inno Setup returned exit code $LASTEXITCODE."
@@ -176,8 +201,11 @@ $Manifest = [ordered]@{
     version = $Version
     numericVersion = $NumericVersion
     channel = $Channel
+    target = "windows-11-x64"
+    signed = $false
+    sourceCommit = $SourceCommit
     publishedAt = (Get-Date).ToString("o")
-    updateMode = "manual-stable"
+    updateMode = "technician-controlled-beta"
     appId = "{0F34D1F2-0B94-4F4F-A63D-F0A15E7D11C7}"
     portable = [ordered]@{
         file = [IO.Path]::GetFileName($PortableZip)
@@ -197,9 +225,11 @@ $Manifest = [ordered]@{
     }
     remoteUpdate = [ordered]@{
         enabled = $true
-        discoveryOnly = $true
+        discoveryOnly = $false
+        secureDownload = $true
+        installerExecution = $false
         manifestUrl = $null
-        note = "Sprint 14B supports HTTPS manifest discovery when a URL is configured in ForgeCare. Download and installer execution remain disabled."
+        note = "ForgeCare supports HTTPS discovery, secure download, SHA-256 verification and explicit technician-controlled installer handoff when configured."
     }
 }
 

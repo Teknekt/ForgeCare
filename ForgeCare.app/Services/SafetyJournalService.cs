@@ -14,6 +14,11 @@ public sealed class SafetyJournalService
 
     public static SafetyJournalService Instance => LazyInstance.Value;
 
+    public static string SafetyRoot =>
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Mindforge Studio", "ForgeCare", "Safety");
+
     private readonly object _sync = new();
     private readonly string _directory;
     private readonly string _journalFile;
@@ -22,9 +27,7 @@ public sealed class SafetyJournalService
 
     private SafetyJournalService()
     {
-        _directory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Mindforge Studio", "ForgeCare", "Safety");
+        _directory = SafetyRoot;
         _journalFile = Path.Combine(_directory, "action-journal.json");
         _snapshotFile = Path.Combine(_directory, "safety-snapshots.json");
     }

@@ -4,7 +4,7 @@ setlocal
 echo.
 echo ==================================================
 echo  FORGECARE INSTALLER / UPGRADE BUILD
-echo  v1.0.0
+echo  CONFIGURED BETA
 echo ==================================================
 echo.
 echo This requires Inno Setup 6.

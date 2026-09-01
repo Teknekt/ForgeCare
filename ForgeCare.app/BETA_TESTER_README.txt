@@ -1,8 +1,12 @@
 ForgeCare Technician Edition
-v0.0.34-beta
+v1.1.0-beta.1
 Mindforge Studio
 
-FIRST EXTERNAL MACHINE TEST
+CONTROLLED EXTERNAL BETA TEST — WINDOWS 11 X64
+
+This beta is unsigned. Windows SmartScreen may warn. Verify the artifact
+filename and SHA-256 against the supplied release metadata. Do not disable
+Windows security features globally.
 
 1. Run ForgeCare.exe.
 2. Open TOOLS.
@@ -13,7 +17,9 @@ FIRST EXTERNAL MACHINE TEST
 
 IMPORTANT
 - This is a beta test build.
-- Use a non-critical Windows x64 machine.
+- Use a non-critical Windows 11 x64 machine.
 - ForgeCare does not silently elevate permissions.
 - Guided navigation does not automatically execute system-changing actions.
-- Review debug bundles before sharing because they may contain local ForgeCare metadata.
+- ForgeCare does not automatically upload diagnostic artifacts.
+- Professional Reports are bounded handoff records. Debug Bundles are more
+  sensitive engineering artifacts and must be reviewed before sharing.

@@ -63,8 +63,8 @@ public sealed class UpdateDiscoveryService
                     "Manifest AppId does not match this ForgeCare installation.");
             }
 
-            if (!TryVersion(manifest.Version, out Version? available) ||
-                !TryVersion(current, out Version? installed))
+            if (!TryVersion(manifest.Version, out Version available) ||
+                !TryVersion(current, out Version installed))
             {
                 return Invalid(
                     current,
@@ -98,11 +98,12 @@ public sealed class UpdateDiscoveryService
         }
         catch (Exception ex)
         {
+            CrashLogService.RecordPrivacySafe(ex, "Local update manifest validation");
             return new UpdateCheckResult
             {
                 CurrentVersion = current,
                 State = "INVALID MANIFEST",
-                Detail = ex.Message
+                Detail = "The selected update manifest is malformed or unreadable."
             };
         }
     }
@@ -115,8 +116,6 @@ public sealed class UpdateDiscoveryService
         return new UpdateCheckResult
         {
             CurrentVersion = current,
-            AvailableVersion = manifest.Version,
-            Manifest = manifest,
             State = "INVALID MANIFEST",
             Detail = detail
         };
@@ -135,7 +134,7 @@ public sealed class UpdateDiscoveryService
 
     private static bool TryVersion(
         string raw,
-        out Version? version)
+        out Version version)
     {
         string value =
             (raw ?? string.Empty)
@@ -148,9 +147,14 @@ public sealed class UpdateDiscoveryService
         if (dash >= 0)
             value = value[..dash];
 
-        return Version.TryParse(
-            value,
-            out version);
+        if (Version.TryParse(value, out Version? parsed) && parsed is not null)
+        {
+            version = parsed;
+            return true;
+        }
+
+        version = new Version(0, 0);
+        return false;
     }
 
     private static string NormalizeAppId(

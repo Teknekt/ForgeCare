@@ -9,7 +9,7 @@ public sealed class BetaFieldTestSession
     public DateTime StartedAt { get; set; } = DateTime.Now;
     public DateTime? CompletedAt { get; set; }
     public string BuildVersion { get; set; } = string.Empty;
-    public string ComputerName { get; set; } = Environment.MachineName;
+    public string ComputerName { get; set; } = "Not collected";
     public string WindowsDescription { get; set; } = string.Empty;
     public string Architecture { get; set; } = string.Empty;
     public string TesterName { get; set; } = string.Empty;

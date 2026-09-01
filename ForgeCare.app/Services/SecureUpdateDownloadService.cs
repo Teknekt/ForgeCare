@@ -12,17 +12,29 @@ namespace ForgeCare.App.Services;
 public sealed class SecureUpdateDownloadService
 {
     private readonly HttpClient _httpClient;
+    private readonly string _updateRoot;
 
-    public SecureUpdateDownloadService()
+    public SecureUpdateDownloadService(
+        HttpClient? httpClient = null,
+        string? updateRoot = null)
     {
-        _httpClient =
+        _httpClient = httpClient ??
             new HttpClient
             {
                 Timeout = TimeSpan.FromMinutes(5)
             };
 
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
-            "ForgeCare-Technician-Edition/SecureUpdateDownload");
+        if (!_httpClient.DefaultRequestHeaders.UserAgent.Any())
+        {
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "ForgeCare-Technician-Edition/SecureUpdateDownload");
+        }
+
+        _updateRoot = updateRoot ??
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "ForgeCare",
+                "Updates");
     }
 
     public async Task<SecureUpdateDownloadResult> DownloadAndVerifyAsync(
@@ -62,15 +74,9 @@ public sealed class SecureUpdateDownloadService
         if (string.IsNullOrWhiteSpace(safeName))
             safeName = "ForgeCare-Update.exe";
 
-        string root =
-            Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "ForgeCare",
-                "Updates");
+        Directory.CreateDirectory(_updateRoot);
 
-        Directory.CreateDirectory(root);
-
-        string finalPath = Path.Combine(root, safeName);
+        string finalPath = Path.Combine(_updateRoot, safeName);
         string partialPath = finalPath + ".partial";
 
         try
@@ -94,40 +100,41 @@ public sealed class SecureUpdateDownloadService
             await using Stream input =
                 await response.Content.ReadAsStreamAsync(cancellationToken);
 
-            await using FileStream output =
+            await using (FileStream output =
                 new(
                     partialPath,
                     FileMode.Create,
                     FileAccess.Write,
                     FileShare.None,
                     81920,
-                    true);
-
-            byte[] buffer = new byte[81920];
-            long received = 0;
-
-            while (true)
+                    true))
             {
-                int read =
-                    await input.ReadAsync(
-                        buffer.AsMemory(0, buffer.Length),
+                byte[] buffer = new byte[81920];
+                long received = 0;
+
+                while (true)
+                {
+                    int read =
+                        await input.ReadAsync(
+                            buffer.AsMemory(0, buffer.Length),
+                            cancellationToken);
+
+                    if (read <= 0)
+                        break;
+
+                    await output.WriteAsync(
+                        buffer.AsMemory(0, read),
                         cancellationToken);
 
-                if (read <= 0)
-                    break;
+                    received += read;
 
-                await output.WriteAsync(
-                    buffer.AsMemory(0, read),
-                    cancellationToken);
+                    if (total is > 0)
+                        progress?.Report(
+                            (int)Math.Clamp(received * 100L / total.Value, 0, 100));
+                }
 
-                received += read;
-
-                if (total is > 0)
-                    progress?.Report(
-                        (int)Math.Clamp(received * 100L / total.Value, 0, 100));
+                await output.FlushAsync(cancellationToken);
             }
-
-            await output.FlushAsync(cancellationToken);
 
             string actual;
             await using (FileStream verify =
@@ -183,7 +190,8 @@ public sealed class SecureUpdateDownloadService
         catch (Exception ex)
         {
             TryDelete(partialPath);
-            return Fail("DOWNLOAD FAILED", ex.Message);
+            CrashLogService.RecordPrivacySafe(ex, "Secure update download");
+            return Fail("DOWNLOAD FAILED", "The installer could not be downloaded or written to local update storage.");
         }
     }
 

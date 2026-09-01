@@ -1,10 +1,12 @@
 # ForgeCare Technician Edition — External Machine Beta Test
 
-Build: **v0.0.34-beta**
+Build: **v1.1.0-beta.1**
 
 ## Scope
 
-This test is for a non-critical Windows x64 machine. Do not begin with a production-critical,
+This test is for a non-critical Windows 11 x64 machine. The beta is unsigned; verify its filename
+and SHA-256 against the supplied release metadata. Do not disable Windows security features globally.
+Do not begin with a production-critical,
 medical, industrial, kiosk, domain-controller, or irreplaceable customer system.
 
 ## 1. Launch
@@ -69,6 +71,20 @@ Use only low-risk disposable test candidates.
 - Export Debug Bundle.
 - Open ZIP and confirm `environment.txt` exists.
 - Review the ZIP before sharing because it can contain local ForgeCare report/settings/safety metadata.
+- Confirm ForgeCare did not upload the bundle automatically.
+
+## Optional controlled Startup action
+
+Only on a disposable/non-critical target:
+
+- Select one supported harmless current-user Startup entry.
+- Review the proposed change and use Dry Run where offered.
+- Confirm explicitly, execute, and verify undo/recovery availability.
+- Restart only if the scenario requires it.
+- Run a later explicit System Scan and inspect the factual verification result.
+- Restore the entry where appropriate.
+
+Do not treat verification completion as proof of performance improvement.
 
 ## 9. Restart test
 

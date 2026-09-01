@@ -79,9 +79,10 @@ public sealed class ControlledInstallerHandoffService
         }
         catch (Exception ex)
         {
+            CrashLogService.RecordPrivacySafe(ex, "Installer handoff validation");
             return Fail(
                 "VALIDATION FAILED",
-                ex.Message);
+                "The staged installer could not be validated for handoff.");
         }
     }
 
@@ -116,9 +117,10 @@ public sealed class ControlledInstallerHandoffService
         }
         catch (Exception ex)
         {
+            CrashLogService.RecordPrivacySafe(ex, "Installer launch handoff");
             return Fail(
                 "LAUNCH FAILED",
-                ex.Message);
+                "Windows did not accept the explicit installer handoff.");
         }
     }
 

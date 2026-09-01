@@ -13,11 +13,13 @@ public sealed class BetaDiagnosticsService
     private readonly string _dataRoot;
     private readonly string _diagnosticsRoot;
     private readonly string _crashLogPath;
+    private readonly string _safetyRoot;
 
     public BetaDiagnosticsService(
         string? dataRoot = null,
         string? diagnosticsRoot = null,
-        string? crashLogPath = null)
+        string? crashLogPath = null,
+        string? safetyRoot = null)
     {
         _dataRoot = dataRoot ??
             Path.Combine(
@@ -29,6 +31,9 @@ public sealed class BetaDiagnosticsService
 
         _crashLogPath = crashLogPath ??
             CrashLogService.CrashLogPath;
+
+        _safetyRoot = safetyRoot ??
+            SafetyJournalService.SafetyRoot;
     }
 
     public string DataRoot => _dataRoot;
@@ -43,7 +48,6 @@ public sealed class BetaDiagnosticsService
 
         return
             $"ForgeCare {version}{Environment.NewLine}" +
-            $"Machine: {Environment.MachineName}{Environment.NewLine}" +
             $"Windows: {RuntimeInformation.OSDescription}{Environment.NewLine}" +
             $"Process: {RuntimeInformation.ProcessArchitecture}{Environment.NewLine}" +
             $"OS architecture: {RuntimeInformation.OSArchitecture}{Environment.NewLine}" +
@@ -51,7 +55,7 @@ public sealed class BetaDiagnosticsService
             $"64-bit process: {Environment.Is64BitProcess}{Environment.NewLine}" +
             $"CPU count: {Environment.ProcessorCount}{Environment.NewLine}" +
             $"Working set: {Environment.WorkingSet / 1024d / 1024d:0.0} MB{Environment.NewLine}" +
-            $"Data root: {DataRoot}";
+            $"Data root: %LOCALAPPDATA%\\ForgeCare";
     }
 
     public string ExportDebugBundle(string requestedZipPath)
@@ -79,20 +83,27 @@ public sealed class BetaDiagnosticsService
             GetEnvironmentSummary(),
             Encoding.UTF8);
 
-        CopyIfExists(
-            _crashLogPath,
-            Path.Combine(staging, "crash.log"));
-
         var copyWarnings = new List<string>();
 
-        foreach (string folderName in new[] { "Settings", "Reports", "Safety", "Evidence" })
+        ProjectCrashLogIfExists(
+            _crashLogPath,
+            Path.Combine(staging, "crash.log"),
+            copyWarnings);
+
+        foreach ((string folderName, string source) in new[]
         {
-            string source = Path.Combine(DataRoot, folderName);
+            ("Settings", Path.Combine(DataRoot, "Settings")),
+            ("Reports", Path.Combine(DataRoot, "Reports")),
+            ("Safety", _safetyRoot),
+            ("Evidence", Path.Combine(DataRoot, "Evidence"))
+        })
+        {
             if (!Directory.Exists(source))
                 continue;
 
             string target = Path.Combine(staging, folderName);
             CopyDirectoryBestEffort(
+                folderName,
                 source,
                 target,
                 copyWarnings);
@@ -120,6 +131,7 @@ public sealed class BetaDiagnosticsService
     }
 
     private static void CopyDirectoryBestEffort(
+        string category,
         string source,
         string target,
         List<string> warnings)
@@ -140,26 +152,45 @@ public sealed class BetaDiagnosticsService
                 catch (Exception ex)
                 {
                     warnings.Add(
-                        $"Could not copy {file}: {ex.Message}");
+                        PrivacySafeDiagnosticFormatter.FormatSupportFailure(
+                            category,
+                            "CopyFailed",
+                            ex));
                 }
             }
         }
         catch (Exception ex)
         {
             warnings.Add(
-                $"Could not enumerate {source}: {ex.Message}");
+                PrivacySafeDiagnosticFormatter.FormatSupportFailure(
+                    category,
+                    "EnumerationFailed",
+                    ex));
         }
     }
 
-    private static void CopyIfExists(string source, string target)
+    private static void ProjectCrashLogIfExists(
+        string source,
+        string target,
+        List<string> warnings)
     {
         try
         {
             if (File.Exists(source))
-                File.Copy(source, target, true);
+                CrashLogBundleProjector.Project(source, target);
         }
         catch
         {
+            try
+            {
+                if (File.Exists(target))
+                    File.Delete(target);
+            }
+            catch
+            {
+            }
+
+            warnings.Add("Crash diagnostics unavailable: SanitizationFailed");
         }
     }
 }

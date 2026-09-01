@@ -855,7 +855,7 @@ public partial class MainWindow : Window
 
             MessageBox.Show(
                 this,
-                ex.Message,
+                "ForgeCare could not open the selected report.",
                 "ForgeCare Report Open Error",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
@@ -2566,7 +2566,7 @@ public partial class MainWindow : Window
 
             MessageBox.Show(
                 this,
-                ex.Message,
+                "ForgeCare could not export the Debug Bundle. Review the privacy-safe crash log and try another destination.",
                 "ForgeCare Debug Bundle Error",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
@@ -3234,6 +3234,14 @@ public partial class MainWindow : Window
     {
         try
         {
+            _lastSecureUpdateDownload =
+                null;
+
+            PrepareInstallerHandoffButton.IsEnabled =
+                false;
+
+            ResetInstallerHandoffConfirmationUi();
+
             CheckRemoteUpdateButton.IsEnabled =
                 false;
 
@@ -3351,7 +3359,7 @@ public partial class MainWindow : Window
                 "CHECK FAILED";
 
             RemoteUpdateDetailText.Text =
-                ex.Message;
+                "ForgeCare could not complete the remote update check.";
         }
         finally
         {
@@ -3382,6 +3390,14 @@ public partial class MainWindow : Window
 
             return;
         }
+
+        _lastSecureUpdateDownload =
+            null;
+
+        PrepareInstallerHandoffButton.IsEnabled =
+            false;
+
+        ResetInstallerHandoffConfirmationUi();
 
         DownloadVerifiedUpdateButton.IsEnabled =
             false;
@@ -3475,7 +3491,7 @@ public partial class MainWindow : Window
                 "DOWNLOAD FAILED";
 
             SecureDownloadDetailText.Text =
-                ex.Message;
+                "ForgeCare could not complete the verified update download.";
         }
         finally
         {
@@ -3532,7 +3548,7 @@ public partial class MainWindow : Window
             false;
 
         LaunchVerifiedInstallerButton.IsEnabled =
-            validation.Success;
+            false;
 
         ConfirmInstallerHandoffCheckBox.IsEnabled =
             validation.Success;
@@ -3549,6 +3565,18 @@ public partial class MainWindow : Window
             PrepareInstallerHandoffButton.IsEnabled =
                 _lastSecureUpdateDownload?.Success == true;
         }
+    }
+
+    private void ResetInstallerHandoffConfirmationUi()
+    {
+        ConfirmInstallerHandoffCheckBox.IsChecked =
+            false;
+
+        ConfirmInstallerHandoffCheckBox.IsEnabled =
+            false;
+
+        LaunchVerifiedInstallerButton.IsEnabled =
+            false;
     }
 
     private void ConfirmInstallerHandoffCheckBox_Checked(

@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Text;
 
 namespace ForgeCare.App.Services;
 
@@ -24,19 +23,13 @@ public static class CrashLogService
             {
                 Directory.CreateDirectory(DiagnosticsRoot);
 
-                var text = new StringBuilder();
-                text.AppendLine("============================================================");
-                text.AppendLine($"ForgeCare exception · {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-                text.AppendLine($"Context: {context}");
-                text.AppendLine($"Machine: {Environment.MachineName}");
-                text.AppendLine($"User: {Environment.UserName}");
-                text.AppendLine($"OS: {Environment.OSVersion}");
-                text.AppendLine($".NET: {Environment.Version}");
-                text.AppendLine();
-                text.AppendLine(exception.ToString());
-                text.AppendLine();
-
-                File.AppendAllText(CrashLogPath, text.ToString(), Encoding.UTF8);
+                File.AppendAllText(
+                    CrashLogPath,
+                    PrivacySafeDiagnosticFormatter.FormatCrashEntry(
+                        exception,
+                        context,
+                        DateTime.UtcNow),
+                    System.Text.Encoding.UTF8);
             }
         }
         catch
@@ -46,26 +39,5 @@ public static class CrashLogService
     }
 
     public static void RecordPrivacySafe(Exception exception, string context)
-    {
-        try
-        {
-            lock (Sync)
-            {
-                Directory.CreateDirectory(DiagnosticsRoot);
-
-                var text = new StringBuilder();
-                text.AppendLine("============================================================");
-                text.AppendLine($"ForgeCare diagnostic issue · {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
-                text.AppendLine($"Context: {context}");
-                text.AppendLine($"Failure type: {exception.GetType().Name}");
-                text.AppendLine();
-
-                File.AppendAllText(CrashLogPath, text.ToString(), Encoding.UTF8);
-            }
-        }
-        catch
-        {
-            // Logging must never cause a secondary crash.
-        }
-    }
+        => Record(exception, context);
 }
